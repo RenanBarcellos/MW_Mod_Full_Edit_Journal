@@ -1,0 +1,186 @@
+local config = require("journal_custom.config")
+local input = require("journal_custom.journal.input")
+local logger = require("journal_custom.util.logger")
+
+local M = {}
+
+local keybindRedirectRegistered = false
+local vanillaSuppressionRegistered = false
+local allowVanillaJournalActivation = 0
+local BLOCKED_MENU_IDS = {
+    MenuAlchemy = true,
+    MenuBarter = true,
+    MenuContents = true,
+    MenuDialog = true,
+    MenuEnchantment = true,
+    MenuLoad = true,
+    MenuLoading = true,
+    MenuMessage = true,
+    MenuName = true,
+    MenuPersuasion = true,
+    MenuQuantity = true,
+    MenuRepair = true,
+    MenuRestWait = true,
+    MenuSave = true,
+    MenuServiceSpells = true,
+    MenuServiceTraining = true,
+    MenuServiceTravel = true,
+    MenuSpellmaking = true,
+}
+
+local function isVanillaJournalBlockEnabled()
+    local currentConfig = config.get()
+    local featureFlags = currentConfig.featureFlags or {}
+    return featureFlags.enableVanillaJournalBlock == true
+end
+
+local function isTextInputActive()
+    local worldController = tes3.worldController
+    local menuController = worldController and worldController.menuController or nil
+    local inputController = menuController and menuController.inputController or nil
+    local textInputFocus = inputController and inputController.textInputFocus or nil
+    return textInputFocus ~= nil and textInputFocus.visible == true
+end
+
+local function isShiftHeld()
+    local worldController = tes3.worldController
+    local inputController = worldController and worldController.inputController or nil
+    return inputController ~= nil and inputController:isShiftDown() == true
+end
+
+local function findBlockingMenuId()
+    for menuId in pairs(BLOCKED_MENU_IDS) do
+        if tes3ui.findMenu(menuId) then
+            return menuId
+        end
+    end
+
+    return nil
+end
+
+local function runOpenBookCallback(openBookCallback)
+    if type(openBookCallback) ~= "function" then
+        return
+    end
+
+    local ok, err = pcall(openBookCallback)
+    if not ok then
+        logger.error("Falha ao executar callback do journal_custom: %s", err)
+    end
+end
+
+local function openVanillaJournal()
+    if tes3ui.findMenu("MenuBook") then
+        tes3ui.closeBookMenu()
+    end
+
+    allowVanillaJournalActivation = allowVanillaJournalActivation + 1
+    if tes3ui.showJournal() then
+        logger.info("Journal vanilla aberto por Shift+J.")
+        return true
+    end
+
+    allowVanillaJournalActivation = math.max(0, allowVanillaJournalActivation - 1)
+    logger.warn("Falha ao abrir o journal vanilla por Shift+J.")
+    return false
+end
+
+function M.shouldSuppressJournalKeybind()
+    if input.isEditActive() then
+        return true, "editor"
+    end
+
+    if isTextInputActive() then
+        return true, "textInput"
+    end
+
+    local menuId = findBlockingMenuId()
+    if menuId then
+        return true, menuId
+    end
+
+    return false, nil
+end
+
+function M.registerKeybindRedirect(openBookCallback)
+    if keybindRedirectRegistered then
+        return
+    end
+
+    event.register(tes3.event.keybindTested, function(e)
+        if not isVanillaJournalBlockEnabled() then
+            return
+        end
+
+        if e.transition ~= tes3.keyTransition.downThisFrame then
+            return
+        end
+
+        if not e.result then
+            return
+        end
+
+        if isShiftHeld() then
+            local shouldSuppress, reason = M.shouldSuppressJournalKeybind()
+            if shouldSuppress then
+                logger.debug("Shift+J consumido sem abrir o journal vanilla (%s).", tostring(reason))
+                e.result = false
+                return false
+            end
+
+            e.result = false
+            openVanillaJournal()
+            return false
+        end
+
+        local shouldSuppress, reason = M.shouldSuppressJournalKeybind()
+        if shouldSuppress then
+            logger.debug("Keybind do journal consumido sem abrir o journal_custom (%s).", tostring(reason))
+            e.result = false
+            return false
+        end
+
+        logger.debug("Redirecionando keybind do journal para o journal_custom.")
+        e.result = false
+        runOpenBookCallback(openBookCallback)
+    end, { filter = tes3.keybind.journal })
+
+    keybindRedirectRegistered = true
+end
+
+function M.registerVanillaJournalSuppression()
+    if vanillaSuppressionRegistered then
+        return
+    end
+
+    event.register(tes3.event.uiActivated, function()
+        if not isVanillaJournalBlockEnabled() then
+            return
+        end
+
+        if allowVanillaJournalActivation > 0 then
+            allowVanillaJournalActivation = allowVanillaJournalActivation - 1
+            return
+        end
+
+        if tes3ui.closeJournal() then
+            logger.debug("MenuJournal vanilla fechado pela camada de compatibilidade.")
+            return
+        end
+
+        local menu = tes3ui.findMenu("MenuJournal")
+        if menu then
+            menu:destroy()
+            logger.debug("MenuJournal vanilla destruido pela camada de compatibilidade.")
+        end
+    end, { filter = "MenuJournal" })
+
+    vanillaSuppressionRegistered = true
+end
+
+function M.register(openBookCallback)
+    M.registerKeybindRedirect(openBookCallback)
+    M.registerVanillaJournalSuppression()
+end
+
+return M

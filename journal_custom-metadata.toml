@@ -1,0 +1,7 @@
+[package]
+name = "Mod 1 - Journal Customizado"
+version = "0.1.0"
+authors = ["Renan"]
+
+[tools.mwse]
+lua-mod = "journal_custom"
