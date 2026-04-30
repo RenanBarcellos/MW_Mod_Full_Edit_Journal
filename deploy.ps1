@@ -16,6 +16,8 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
+# The deploy script only packages the single mod that lives at the repository
+# root and mirrors it into the MO2 mods directory.
 $repoRoot = $PSScriptRoot
 $modsDestinationRoot = "G:\Modding\Outlander\mods"
 
@@ -34,6 +36,8 @@ $excludeTopLevelFiles = @(
     "README.md"
 )
 
+# Read the few TOML keys the deploy needs without depending on an external TOML
+# parser module.
 function Get-TomlString {
     param(
         [Parameter(Mandatory = $true)]
@@ -69,6 +73,8 @@ function Get-TomlString {
     return $null
 }
 
+# A valid project exposes exactly one metadata file at the root plus its
+# matching MWSE/mods/<mod-id>/main.lua entry point.
 function Get-ProjectMods {
     Get-ChildItem -Path $repoRoot -File -Filter "*-metadata.toml" |
         ForEach-Object {
@@ -94,6 +100,7 @@ function Get-ProjectMods {
         }
 }
 
+    # Enforce the one-mod-per-project layout before any files are copied.
 function Ensure-ValidModLayout {
     param(
         [Parameter(Mandatory = $true)]
@@ -109,6 +116,7 @@ function Ensure-ValidModLayout {
     }
 }
 
+# Dry-run mode still needs to show the directory work that would happen.
 function Ensure-Directory {
     param(
         [Parameter(Mandatory = $true)]
@@ -125,6 +133,7 @@ function Ensure-Directory {
     }
 }
 
+# Clean deploys remove the existing target contents before the copy phase.
 function Clear-Directory {
     param(
         [Parameter(Mandatory = $true)]
@@ -144,6 +153,8 @@ function Clear-Directory {
     }
 }
 
+# Filter out repo-only files and support directories so the deployed mod only
+# contains runtime assets.
 function Should-ExcludeInsideMod {
     param(
         [Parameter(Mandatory = $true)]
@@ -172,6 +183,8 @@ function Should-ExcludeInsideMod {
     return $false
 }
 
+# Copy the current repository layout into the final mod folder while preserving
+# relative paths under the repository root.
 function Copy-Mod {
     param(
         [Parameter(Mandatory = $true)]
@@ -232,6 +245,8 @@ function Copy-Mod {
     Write-Host "Done: $($ModInfo.Id)"
 }
 
+# Resolve the one valid mod, then either list it or deploy it according to the
+# selected parameter set.
 $mods = @(Get-ProjectMods)
 
 if ($mods.Count -eq 0) {

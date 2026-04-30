@@ -5,6 +5,8 @@ local SAVE_BATCH_SIZE = 25
 
 local M = {}
 
+-- Migration reuses engine quest and dialogue ids, so the generated entry ids
+-- must match the capture layer.
 local function sanitizeIdSegment(value)
     local normalized = tostring(value or "unknown")
     normalized = normalized:lower()
@@ -24,6 +26,8 @@ local function buildEntryId(questId, questIndex)
     return string.format("engine_%s_%04d", sanitizeIdSegment(questId), questIndex)
 end
 
+-- Convert journal dialogue info records into the same normalized entry shape
+-- used by live capture.
 local function buildEntryFromInfo(dialogue, info)
     if not dialogue or dialogue.type ~= tes3.dialogueType.journal then
         return nil
@@ -54,6 +58,7 @@ local function buildEntryFromInfo(dialogue, info)
     }
 end
 
+-- Migration only needs quests that actually started in the current save.
 local function getStartedQuests()
     local worldController = tes3.worldController
     if not worldController or not worldController.quests then
@@ -75,6 +80,8 @@ local function getStartedQuests()
     return quests
 end
 
+-- Import a single journal info row if it really belongs to the expected
+-- dialogue and resolves to a visible entry.
 local function importInfoForDialogue(dialogue, info)
     local sourceDialogue = info:findDialogue()
     if not sourceDialogue or sourceDialogue.id ~= dialogue.id then
@@ -96,6 +103,7 @@ function M.needsMigration(state)
     return loadedState.migrationDone ~= true
 end
 
+-- Import all eligible info rows for one started journal dialogue.
 function M.importDialogue(dialogue)
     if not dialogue or dialogue.type ~= tes3.dialogueType.journal then
         return 0, 0
@@ -122,6 +130,8 @@ function M.importDialogue(dialogue)
     return importedCount, touchedCount
 end
 
+-- Existing saves can contain many quest entries, so migration saves progress in
+-- batches instead of waiting until the very end.
 function M.run()
     local state = data.getState()
     if not M.needsMigration(state) then

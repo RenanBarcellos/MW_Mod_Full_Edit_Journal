@@ -13,6 +13,7 @@
 	`MWSE\mods\<mod-id>\...`
 - The value of `[tools.mwse].lua-mod` must match `<mod-id>`.
 - Deploy must operate on the single mod at the project root and must not assume a collection of mods in subfolders.
+- Keep code comments up to date. Add clear comments for responsibilities, invariants, and non-obvious flows so the code stays easy to understand and maintain.
 - External MWSE and example mod references live in `C:\dev\Morrowind-ref` and must be treated as read-only reference material unless the user explicitly says otherwise.
 - Use `C:\dev\Morrowind-ref\MWSE-ref` for MWSE API and documentation reference, and `C:\dev\Morrowind-ref\Mods de exemplo` for implementation examples.
 - Use `C:\dev\Morrowind-ref\Snippets` for reusable snippets and notes before recreating boilerplate.

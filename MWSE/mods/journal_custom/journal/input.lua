@@ -7,6 +7,8 @@ local render = require("journal_custom.journal.render")
 
 local M = {}
 
+-- Feature flags gate selection and editing independently so each phase can be
+-- validated on its own.
 local function isSelectionEnabled()
     local currentConfig = config.get()
     local featureFlags = currentConfig.featureFlags or {}
@@ -19,6 +21,8 @@ local function isEditEnabled()
     return featureFlags.enableEditMode == true
 end
 
+-- Shortcuts can come from saved settings or from defaults, depending on how far
+-- the user has customized MCM.
 local function getShortcutDefaults()
     local defaultSettings = config.getDefaults().settings or {}
     return defaultSettings.shortcuts or {}
@@ -29,6 +33,8 @@ local function getShortcutSettings()
     return settings.shortcuts or {}
 end
 
+-- Accept either a shortcut table or a shortcut name so callers can use the
+-- helper APIs consistently.
 local function resolveShortcut(shortcutOrName)
     if type(shortcutOrName) == "table" then
         return shortcutOrName
@@ -42,6 +48,7 @@ local function resolveShortcut(shortcutOrName)
     return shortcuts[shortcutOrName] or getShortcutDefaults()[shortcutOrName]
 end
 
+-- Resolve scan codes into readable names for MCM help text and journal help.
 local function resolveKeyName(keyCode)
     local resolvedKeyCode = type(keyCode) == "number" and keyCode or nil
     if not resolvedKeyCode then
@@ -60,6 +67,7 @@ local function resolveKeyName(keyCode)
     return tostring(resolvedKeyCode)
 end
 
+-- Human-readable shortcut descriptions are reused by help text and the MCM page.
 local function describeShortcutValue(shortcutOrName)
     local resolvedShortcut = resolveShortcut(shortcutOrName)
     if type(resolvedShortcut) ~= "table" or type(resolvedShortcut.keyCode) ~= "number" then
@@ -84,6 +92,8 @@ local function describeShortcutValue(shortcutOrName)
     return table.concat(parts, "+")
 end
 
+-- Keep modal instructions close to the shortcut logic so UI copy updates stay
+-- synchronized with actual bindings.
 local function buildEditHelpText(isDateEntry)
     local saveShortcut = describeShortcutValue("saveModal")
     local cancelShortcut = describeShortcutValue("cancelModal")
@@ -119,6 +129,8 @@ local function buildCreateDateHelpText()
     )
 end
 
+-- The book only lets the player act on entries visible in the current spread,
+-- so convert visible blocks into ordered entry ids.
 local function buildVisibleEntryList(blocks)
     local list = {}
     local visibleSet = {}
@@ -201,6 +213,8 @@ function M.getHelpShortcutLines()
     }
 end
 
+-- Selection becomes invalid when the spread changes or the entry is no longer
+-- visible in the freshly mapped blocks.
 function M.resolveSelection(blocks, selectedEntryId, selectedSpreadStart)
     if not isSelectionEnabled() then
         return selectedEntryId, false
@@ -227,6 +241,7 @@ function M.resolveSelection(blocks, selectedEntryId, selectedSpreadStart)
     return nil, false
 end
 
+-- Arrow-key navigation is intentionally constrained to the current spread.
 function M.moveSelection(blocks, selectedEntryId, direction)
     if not isSelectionEnabled() then
         return selectedEntryId, false
@@ -258,6 +273,7 @@ function M.moveSelection(blocks, selectedEntryId, direction)
     return entryIds[nextIndex], true
 end
 
+-- Editing always starts from the currently selected visible entry.
 function M.beginEdit(entryId, blocks, callbacks)
     if not isEditEnabled() then
         return false
@@ -295,6 +311,8 @@ function M.beginEdit(entryId, blocks, callbacks)
     })
 end
 
+-- New player notes reuse the same modal editor, but with a temporary synthetic
+-- entry object until the user saves.
 function M.beginCreateNote(blocks, callbacks)
     if not isEditEnabled() then
         return false
@@ -326,6 +344,8 @@ function M.beginCreateNote(blocks, callbacks)
     })
 end
 
+-- Date entry creation also reuses the modal editor, with a default label based
+-- on the current in-world date.
 function M.beginCreateDate(blocks, callbacks)
     if not isEditEnabled() then
         return false
@@ -405,6 +425,7 @@ function M.onKeyDown(e, blocks, selectedEntryId)
     return selectedEntryId, false
 end
 
+-- MenuBook keyPress and keyDown both feed the same selection logic.
 function M.onKeyPress(e, blocks, selectedEntryId)
     return M.onKeyDown(e, blocks, selectedEntryId)
 end

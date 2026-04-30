@@ -7,6 +7,9 @@ local M = {}
 local keybindRedirectRegistered = false
 local vanillaSuppressionRegistered = false
 local allowVanillaJournalActivation = 0
+
+-- These menus either own text input or represent UI states where hijacking the
+-- journal key would feel unsafe or surprising.
 local BLOCKED_MENU_IDS = {
     MenuAlchemy = true,
     MenuBarter = true,
@@ -28,12 +31,15 @@ local BLOCKED_MENU_IDS = {
     MenuSpellmaking = true,
 }
 
+-- The redirect layer can be toggled at runtime from config and MCM.
 local function isVanillaJournalBlockEnabled()
     local currentConfig = config.get()
     local featureFlags = currentConfig.featureFlags or {}
     return featureFlags.enableVanillaJournalBlock == true
 end
 
+-- When a text field owns focus, the journal key should behave like normal text
+-- input instead of opening or closing menus.
 local function isTextInputActive()
     local worldController = tes3.worldController
     local menuController = worldController and worldController.menuController or nil
@@ -42,12 +48,15 @@ local function isTextInputActive()
     return textInputFocus ~= nil and textInputFocus.visible == true
 end
 
+-- Shift is used as the explicit escape hatch to open the vanilla journal.
 local function isShiftHeld()
     local worldController = tes3.worldController
     local inputController = worldController and worldController.inputController or nil
     return inputController ~= nil and inputController:isShiftDown() == true
 end
 
+-- Some engine menus do not expose a direct "safe to intercept" flag, so this
+-- helper checks the known conflicting menu ids.
 local function findBlockingMenuId()
     for menuId in pairs(BLOCKED_MENU_IDS) do
         if tes3ui.findMenu(menuId) then
@@ -58,6 +67,8 @@ local function findBlockingMenuId()
     return nil
 end
 
+-- The compat layer does not own the custom journal UI; it just calls back into
+-- whichever module is responsible for opening it.
 local function runOpenBookCallback(openBookCallback)
     if type(openBookCallback) ~= "function" then
         return
@@ -69,6 +80,8 @@ local function runOpenBookCallback(openBookCallback)
     end
 end
 
+-- Shift+Journal temporarily bypasses the custom redirect and reopens the
+-- vanilla journal UI.
 local function openVanillaJournal()
     if tes3ui.findMenu("MenuBook") then
         tes3ui.closeBookMenu()
@@ -85,6 +98,7 @@ local function openVanillaJournal()
     return false
 end
 
+-- Centralize every reason the journal key should be ignored instead of routed.
 function M.shouldSuppressJournalKeybind()
     if input.isEditActive() then
         return true, "editor"
@@ -102,6 +116,8 @@ function M.shouldSuppressJournalKeybind()
     return false, nil
 end
 
+-- Intercept the configured journal keybind and decide whether it should open
+-- journal_custom, the vanilla journal, or nothing at all.
 function M.registerKeybindRedirect(openBookCallback)
     if keybindRedirectRegistered then
         return
@@ -148,6 +164,8 @@ function M.registerKeybindRedirect(openBookCallback)
     keybindRedirectRegistered = true
 end
 
+-- Some systems can still try to activate MenuJournal directly, so close or
+-- destroy it unless the user explicitly requested the vanilla fallback.
 function M.registerVanillaJournalSuppression()
     if vanillaSuppressionRegistered then
         return
@@ -178,6 +196,7 @@ function M.registerVanillaJournalSuppression()
     vanillaSuppressionRegistered = true
 end
 
+-- The public entry point wires both redirect strategies together.
 function M.register(openBookCallback)
     M.registerKeybindRedirect(openBookCallback)
     M.registerVanillaJournalSuppression()

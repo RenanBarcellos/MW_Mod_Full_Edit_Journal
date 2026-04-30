@@ -17,6 +17,8 @@ local MONTH_GMSTS = {
     tes3.gmst.sMonthEveningstar,
 }
 
+-- Some world date values come from engine globals that may be missing during
+-- early load phases, so guard those reads carefully.
 local function getGlobalValue(globalVariable)
     if globalVariable == nil then
         return nil
@@ -32,6 +34,7 @@ local function getGlobalValue(globalVariable)
     return tonumber(value)
 end
 
+-- Resolve the localized month name through GMSTs instead of hardcoding it.
 local function getMonthName(monthIndex)
     local resolvedIndex = tonumber(monthIndex)
     if resolvedIndex == nil then
@@ -51,12 +54,15 @@ local function getMonthName(monthIndex)
     return gmst.value
 end
 
+-- Date labels move through multiple systems, so normalize them before display
+-- comparisons or persistence decisions.
 function M.normalizeLabel(label)
     local normalized = text.stripJournalMarkup(label or "")
     normalized = text.normalizeWhitespace(normalized)
     return normalized
 end
 
+-- Read the current in-world calendar fields from the controller in one place.
 function M.getCurrentDateFields()
     local worldController = tes3.worldController
     if not worldController then
@@ -71,6 +77,7 @@ function M.getCurrentDateFields()
     }
 end
 
+-- Date-aware features only run when the entry has a complete calendar stamp.
 function M.hasWorldDate(value)
     local resolvedValue = value or {}
     return tonumber(resolvedValue.calendarDay or resolvedValue.day) ~= nil
@@ -78,6 +85,7 @@ function M.hasWorldDate(value)
         and tonumber(resolvedValue.calendarYear or resolvedValue.year) ~= nil
 end
 
+    -- Use a stable YYYY-MM-DD-style key so automatic date entries can be reused.
 function M.buildDateKey(value)
     local resolvedValue = value or {}
     local calendarYear = tonumber(resolvedValue.calendarYear or resolvedValue.year)
@@ -91,6 +99,7 @@ function M.buildDateKey(value)
     return nil
 end
 
+-- Build the vanilla-style visible label for dated entries and note headers.
 function M.buildWorldDateLabel(value)
     local resolvedValue = value or {}
     local calendarMonth = tonumber(resolvedValue.calendarMonth or resolvedValue.month)
@@ -114,6 +123,8 @@ function M.buildWorldDateLabel(value)
     return string.format("%d %s%s", calendarDay, monthName, daySuffix)
 end
 
+-- Prefer captured world dates, but fall back to an existing label when the
+-- entry came from older data or a manual date entry.
 function M.buildDisplayDate(value)
     local resolvedValue = value or {}
     local worldDateLabel = M.buildWorldDateLabel(resolvedValue)
@@ -130,6 +141,8 @@ function M.buildDisplayDate(value)
     return "Unknown date"
 end
 
+-- Manual date entries may override the generated label, so resolve the final
+-- visible string in one place.
 function M.resolveEntryDateLabel(entry)
     local resolvedEntry = entry or {}
     local overrideLabel = M.normalizeLabel(resolvedEntry.dateLabelOverride)

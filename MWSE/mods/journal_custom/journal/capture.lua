@@ -9,6 +9,8 @@ local registered = false
 local originalAddJournalEntry
 local pendingFreeformEntries = {}
 
+-- Journal-derived ids need to be stable and filesystem-safe because they are
+-- reused across loads and across freeform capture fallbacks.
 local function sanitizeIdSegment(value)
     local normalized = tostring(value or "unknown")
     normalized = normalized:lower()
@@ -28,6 +30,8 @@ local function buildEntryId(questId, questIndex)
     return string.format("engine_%s_%04d", sanitizeIdSegment(questId), questIndex)
 end
 
+-- Freeform journal text has no quest identity, so derive a deterministic id
+-- from the visible text and the current day.
 local function buildFreeformEntryId(originalText, daysPassed)
     local baseId = string.format(
         "engine_note_%s_%s",
@@ -52,6 +56,8 @@ local function buildFreeformEntryId(originalText, daysPassed)
     end
 end
 
+-- Convert the HTML-like text coming from tes3.addJournalEntry into the same
+-- entry shape used by captured engine updates.
 local function buildEntryFromFreeformJournalText(journalText)
     local normalizedText = text.stripBookHtml(journalText)
     if normalizedText == "" then
@@ -75,6 +81,8 @@ local function buildEntryFromFreeformJournalText(journalText)
     }
 end
 
+-- Persist a freeform entry through the same data pipeline used by regular
+-- journal events, including date-entry maintenance.
 local function persistFreeformEntry(entry)
     if not entry then
         return false
@@ -86,6 +94,8 @@ local function persistFreeformEntry(entry)
     return existing == nil
 end
 
+-- Capture raw engine journal events into the normalized entry model stored by
+-- journal_custom.
 function M.buildEntryFromJournalEvent(e)
     local questId = e.topic.id
     local questIndex = e.index
@@ -109,6 +119,8 @@ function M.buildEntryFromJournalEvent(e)
     }
 end
 
+-- Quest-driven journal updates come through tes3.event.journal and are written
+-- immediately once a save profile is active.
 local function onJournal(e)
     if not data.getProfileKey() then
         logger.warn("Journal event received before journal_custom loaded the save data.")
@@ -137,6 +149,8 @@ local function onJournal(e)
     end
 end
 
+-- Freeform entries created before the save profile is ready are replayed once
+-- loading finishes.
 local function flushPendingFreeformEntries()
     if #pendingFreeformEntries == 0 or not data.getProfileKey() then
         return 0
@@ -156,6 +170,8 @@ local function flushPendingFreeformEntries()
     return createdCount
 end
 
+-- Hook tes3.addJournalEntry so freeform notes added by code are mirrored into
+-- the custom journal state.
 local function wrapAddJournalEntry()
     if originalAddJournalEntry then
         return
@@ -190,6 +206,7 @@ function M.flushPendingEntries()
     return flushPendingFreeformEntries()
 end
 
+-- Register the capture layer only once for the whole session.
 function M.register()
     if registered then
         return

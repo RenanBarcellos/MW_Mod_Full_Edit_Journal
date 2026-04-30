@@ -7,6 +7,8 @@ local DEFAULT_ENTRY_COLOR = "000000"
 local DATE_ENTRY_COLOR = "9F0000"
 local DATE_ENTRY_EMPTY_TEXT = "(no date)"
 
+-- Keep the renderer's HTML shape simple and deterministic so MenuBook
+-- pagination and mapping stay predictable.
 local function wrapEntryMarkup(markup, alignment)
     return string.format('<div align="%s">%s</div>', alignment or "left", markup)
 end
@@ -15,6 +17,8 @@ local function isDateEntry(entry)
     return data.isDateEntry(entry)
 end
 
+-- Date entries behave like separators, so they use tighter trailing spacing
+-- than regular note entries.
 local function buildSpacingAfter(entry, nextEntry)
     if isDateEntry(entry) then
         return '<br>'
@@ -27,6 +31,8 @@ local function buildSpacingAfter(entry, nextEntry)
     return '<br><br><br>'
 end
 
+-- Headers are currently implicit, but the title builder still centralizes the
+-- logic used by help text, logging, and future UI labels.
 function M.buildHeaderTitle(entry)
     if isDateEntry(entry) then
         return journalDate.resolveEntryDateLabel(entry)
@@ -49,6 +55,8 @@ function M.buildHeaderTitle(entry)
     return tostring(entry.displayDate or "Note")
 end
 
+-- Subtitle generation keeps entry metadata phrased consistently anywhere the
+-- UI needs a short secondary description.
 function M.buildHeaderSubtitle(entry)
     if isDateEntry(entry) then
         return "Date entry"
@@ -69,6 +77,8 @@ function M.buildHeaderSubtitle(entry)
     return "Recorded entry"
 end
 
+-- Date entries render their resolved label, while notes render sanitized body
+-- text with line-break rules based on their source.
 function M.buildEntryBody(entry)
     if isDateEntry(entry) then
         local label = text.sanitizeBookText(journalDate.resolveEntryDateLabel(entry))
@@ -107,6 +117,8 @@ function M.renderEntry(entry, context)
     return wrapEntryMarkup(string.format('%s<font color="%s" size="3">%s</font>', header, DEFAULT_ENTRY_COLOR, body))
 end
 
+-- Render the current journal snapshot into one deterministic HTML string for
+-- MenuBook.
 function M.renderBook(entries, context)
     local _ = entries
     local resolvedContext = context or {}

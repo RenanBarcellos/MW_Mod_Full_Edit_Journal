@@ -8,6 +8,9 @@ local render = require("journal_custom.journal.render")
 local text = require("journal_custom.util.text")
 
 local M = {}
+
+-- book.lua is the orchestrator that bridges MenuBook, selection state, mapping,
+-- modal editing, and rebuild/restoration flow.
 local SELECTED_ENTRY_UI_COLOR = {
     0x6F / 255,
     0x2C / 255,
@@ -22,8 +25,10 @@ local HELP_BUTTON_ID = tes3ui.registerID("journal_custom:help_button")
 local HELP_MENU_ID = tes3ui.registerID("journal_custom:help_menu")
 local HELP_CLOSE_BUTTON_ID = tes3ui.registerID("journal_custom:help_close")
 
+-- Highlighting reuses existing UI nodes by temporarily swapping their colors.
 local coloredElements = {}
 
+-- Keep the context that must survive book rebuilds and page restoration.
 local lastContext = {
     selectedEntryId = nil,
     selectedSpreadStart = nil,
@@ -65,6 +70,7 @@ local function pickNeighborEntryId(entryIds, currentEntryId)
     return entryIds and entryIds[1] or nil
 end
 
+-- Restore every text element color touched by the current selection highlight.
 local function clearSelectionHighlight(menu)
     local hadEntries = #coloredElements > 0
 
@@ -85,6 +91,8 @@ local function clearSelectionHighlight(menu)
     return hadEntries
 end
 
+-- Rebuilds can trigger book sounds multiple times, so suppress a short window
+-- around intentional MenuBook refreshes.
 local function clearRenderSoundSuppression(expectedToken)
     if expectedToken ~= nil and renderSoundSuppression.token ~= expectedToken then
         return
@@ -121,6 +129,8 @@ local function armRenderSoundSuppression(reason)
     timer.frame.delayOneFrame(tickSuppressionWindow)
 end
 
+-- Match the selected entry's rendered body back onto visible text nodes across
+-- the current spread.
 local function updateSelectionHighlight(menu)
     local resolvedMenu = menu or tes3ui.findMenu("MenuBook")
     clearSelectionHighlight(resolvedMenu)
@@ -251,6 +261,7 @@ local function updateSelectionHighlight(menu)
     return changed
 end
 
+-- A fresh open starts with no active selection or remembered spread.
 local function resetSelectionState()
     local state = data.getState()
     if state.selectedEntryId == nil and lastContext.selectedEntryId == nil and lastContext.selectedSpreadStart == nil then
@@ -283,6 +294,8 @@ local function findBookPageButton(menu, direction)
     return menu and (menu:findChild(tes3ui.registerID(buttonId)) or menu:findChild(buttonId))
 end
 
+-- Trigger a page-turn and refresh mapping on the next frame once MenuBook has
+-- updated its visible pages.
 local function schedulePageTurnSync(previousSpreadStart, reason)
     local resolvedReason = reason or "pageTurn"
     scheduleVisibleBlockCollection(resolvedReason)
@@ -356,6 +369,7 @@ local function isHelpActive()
     return tes3ui.findMenu(HELP_MENU_ID) ~= nil
 end
 
+-- Help is a separate lightweight modal so it does not mutate the book markup.
 local function closeHelpMenu()
     local menu = tes3ui.findMenu(HELP_MENU_ID)
     if not menu then
@@ -438,6 +452,7 @@ local function ensureHelpButton(menu)
     return true
 end
 
+-- Mirror the selected entry into both transient context and saved journal state.
 local function applySelection(entryId, reason)
     if entryId == nil or entryId == "" then
         return false
@@ -463,6 +478,8 @@ local function applySelection(entryId, reason)
     return true
 end
 
+-- Clear all persisted selection state when the current spread no longer supports
+-- the active entry.
 local function clearSelection(reason)
     local state = data.getState()
     if state.selectedEntryId == nil and lastContext.selectedEntryId == nil and lastContext.selectedSpreadStart == nil then
@@ -511,6 +528,7 @@ local function isEntryVisibleInBlocks(blocks, entryId)
     return false
 end
 
+-- Persist the latest mapping snapshot so future opens can recover page context.
 local function persistVisibleBlocks(blocks)
     local state = data.getState()
     local changed = false
@@ -551,6 +569,8 @@ local function persistVisibleBlocks(blocks)
     return changed
 end
 
+-- Run the mapper, reconcile it with selection state, and then mirror the
+-- results back into the data module.
 local function collectVisibleBlocks(menu, reason)
     local ok, blocks = pcall(mapping.collectVisibleBlocks, menu, data.getState())
     if not ok then
@@ -609,6 +629,8 @@ local function collectVisibleBlocks(menu, reason)
     return true
 end
 
+-- MenuBook updates asynchronously, so mapping refreshes are deferred until the
+-- next frame after input or page events.
 scheduleVisibleBlockCollection = function(reason)
     if spreadRestoreInProgress then
         return
@@ -655,6 +677,8 @@ local function syncVisibleBlocksForInput()
     return activeVisibleBlocks
 end
 
+-- Rebuilds try to reopen near the previous spread by driving the page buttons
+-- until the target spread is reached again.
 local function scheduleSpreadRestore(targetSpreadStart, reason)
     local normalizedTarget = math.max(1, math.floor(targetSpreadStart or 1))
 
@@ -764,6 +788,8 @@ local function scheduleSpreadRestore(targetSpreadStart, reason)
     stepRestore()
 end
 
+-- When the custom session really ends, tear down auxiliary UI and transient
+-- state on the following frame.
 local function handleMenuBookDestroyed(menu)
     coloredElements = {}
     timer.frame.delayOneFrame(function()
@@ -790,6 +816,8 @@ local function handleMenuBookDestroyed(menu)
     end)
 end
 
+-- Configure the live MenuBook instance once per open so the custom session can
+-- respond to clicks, keys, and cleanup correctly.
 local function configureMenuBook(menu)
     if not menu then
         return false
@@ -819,6 +847,8 @@ local function configureMenuBook(menu)
     return true
 end
 
+-- Global hooks stay registered once and become active only while the custom
+-- book session is open.
 local function ensureMenuBookHooks()
     if menuBookHooksRegistered then
         return
@@ -1058,6 +1088,8 @@ local function setSelectionForRebuild(entryId, restoreSpreadStart)
     data.setSelectedEntry(entryId)
 end
 
+-- Editor callbacks all converge here so modal actions can update data and then
+-- reopen the book at a coherent location.
 local function handleEditSave(payload)
     local entryId = payload and payload.entryId or nil
     if not entryId or not data.updateEditedText(entryId, payload.draftText or "") then
@@ -1199,6 +1231,7 @@ beginCreateDate = function(blocks)
     })
 end
 
+-- Build the render context used for a fresh open or for a rebuild.
 local function resolveContext(preserveContext)
     local state = data.getState()
 
@@ -1212,6 +1245,8 @@ local function resolveContext(preserveContext)
     }
 end
 
+-- Render the current journal snapshot, reopen MenuBook, and then restore the
+-- previous spread when possible.
 local function renderCurrentBook(context, reason)
     local entries = data.getEntries()
     local restoreSpreadStart = type(context.restoreSpreadStart) == "number" and math.max(1, context.restoreSpreadStart) or nil
@@ -1249,6 +1284,8 @@ local function renderCurrentBook(context, reason)
     return true
 end
 
+-- Open starts from a clean selection state and only preserves context on later
+-- rebuilds.
 function M.open()
     local ok, context = pcall(function()
         resetSelectionState()

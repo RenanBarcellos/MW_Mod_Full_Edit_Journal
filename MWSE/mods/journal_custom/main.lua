@@ -7,6 +7,8 @@ local logger = require("journal_custom.util.logger")
 require("journal_custom.mcm")
 local data = require("journal_custom.journal.data")
 
+-- Route the journal key either to the custom book UI or to the lightweight
+-- debug intercept, depending on the current feature flags.
 local function openJournalEntryPoint()
     local currentConfig = config.get()
     local featureFlags = currentConfig.featureFlags or {}
@@ -31,6 +33,7 @@ local function openJournalEntryPoint()
     logger.debug("journal_custom input callback executed.")
 end
 
+-- Register runtime systems once MWSE finishes loading the mod.
 local function initialized()
     config.load()
     capture.register()
@@ -38,6 +41,8 @@ local function initialized()
     logger.info("Initialized.")
 end
 
+-- Hydrate per-save state and run one-time migration or debug seeding after a
+-- save has been loaded.
 local function loaded(e)
     data.load(e.filename)
     capture.flushPendingEntries()
@@ -63,6 +68,8 @@ local function loaded(e)
     end
 end
 
+-- Copy the in-memory journal snapshot into Lua data right before the game
+-- writes the save file.
 local function save(e)
     local ok, _, flushed = pcall(data.flush, e and e.filename)
     if not ok then
@@ -80,6 +87,7 @@ local function save(e)
     logger.debug("Save journal '%s' synced before write.", data.getProfileKey())
 end
 
+-- Keep the entry point small: runtime work happens inside the modules above.
 event.register(tes3.event.initialized, initialized)
 event.register(tes3.event.loaded, loaded)
 event.register(tes3.event.save, save)

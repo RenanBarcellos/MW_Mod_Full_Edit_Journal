@@ -2,6 +2,8 @@ local M = {}
 local NBSP = string.char(194, 160)
 local PARAGRAPH_SENTINEL = "\31"
 
+-- Normalize user and journal text into a predictable whitespace layout before
+-- it is compared, saved, or rendered.
 function M.normalizeWhitespace(text)
     local value = tostring(text or "")
     value = value:gsub("\r\n", "\n")
@@ -14,6 +16,8 @@ function M.normalizeWhitespace(text)
     return value
 end
 
+-- Book body normalization preserves paragraph breaks but can optionally keep
+-- single-line breaks for player-authored notes.
 function M.normalizeBookBodyWhitespace(text, options)
     local value = tostring(text or "")
     local preserveSingleLineBreaks = options and options.preserveSingleLineBreaks == true
@@ -36,11 +40,15 @@ function M.normalizeBookBodyWhitespace(text, options)
     return value
 end
 
+-- Journal topic markup uses @Topic# syntax, which needs to disappear when the
+-- mod is building plain-text comparison keys.
 function M.stripJournalMarkup(text)
     local value = tostring(text or "")
     return value:gsub("@([^#]+)#", "%1")
 end
 
+-- Mapping and editor flows need plain text, so strip the subset of HTML that
+-- MenuBook renders back into visible content.
 function M.stripBookHtml(text)
     local value = tostring(text or "")
     value = value:gsub("<[Bb][Rr]%s*/?>", "\n")
@@ -60,6 +68,7 @@ function M.stripBookHtml(text)
     return M.normalizeWhitespace(value)
 end
 
+-- Escape a single-line value so it is safe to embed directly in book HTML.
 function M.sanitizeBookText(text)
     local value = M.stripJournalMarkup(text)
     value = M.normalizeWhitespace(value)
@@ -71,6 +80,8 @@ function M.sanitizeBookText(text)
     return value
 end
 
+-- Body sanitization uses the same escaping but keeps the body-specific
+-- whitespace rules centralized in one place.
 function M.sanitizeBookBodyText(text, options)
     local value = M.stripJournalMarkup(text)
     value = M.normalizeBookBodyWhitespace(value, options)
@@ -82,6 +93,8 @@ function M.sanitizeBookBodyText(text, options)
     return value
 end
 
+-- Anchor keys are short, stable identifiers used by mapping and freeform-entry
+-- ids to correlate rendered text with saved data.
 function M.buildAnchorKey(text)
     local value = M.stripJournalMarkup(text)
     value = M.normalizeWhitespace(value)

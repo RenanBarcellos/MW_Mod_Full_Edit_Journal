@@ -15,6 +15,8 @@ local dirty = false
 
 local M = {}
 
+-- Deep-copy persisted journal data so runtime mutations never share nested
+-- tables with the save snapshot or default values.
 local function clone(value)
     if type(value) ~= "table" then
         return value
@@ -38,6 +40,8 @@ local function getPersistentDefaults()
     }
 end
 
+-- Fill missing keys without overwriting values that were already loaded from
+-- the save or from a legacy config file.
 local function ensureDefaults(target, defaults)
     for key, value in pairs(defaults) do
         if target[key] == nil then
@@ -50,6 +54,8 @@ local function ensureDefaults(target, defaults)
     return target
 end
 
+-- Extend persisted data with transient state used only while the game session
+-- is running.
 local function initializeRuntimeState(persistedState)
     local runtimeState = ensureDefaults(clone(persistedState or {}), getPersistentDefaults())
     runtimeState.selectedEntryId = nil
@@ -58,6 +64,7 @@ local function initializeRuntimeState(persistedState)
     return runtimeState
 end
 
+-- Build a filesystem-safe identifier for legacy per-save config files.
 local function sanitizeProfileKey(profileKey)
     local normalized = tostring(profileKey or "default")
     normalized = normalized:gsub("[<>:\"/\\|%?%*]", "_")
@@ -96,6 +103,8 @@ local function loadPersistedStateFromSave()
     return ensureDefaults(clone(persistedState), getPersistentDefaults())
 end
 
+-- Legacy configs are still imported once so older saves can migrate into the
+-- new Lua data storage model.
 local function loadLegacyState(profileKey)
     local legacyPath = buildLegacyDataPath(profileKey)
     local loadedState = mwse.loadConfig(legacyPath, {})
@@ -111,6 +120,7 @@ local function loadLegacyState(profileKey)
     return ensureDefaults(clone(loadedState), getPersistentDefaults()), legacyPath
 end
 
+-- Strip runtime-only fields before syncing the journal back into player data.
 local function buildPersistentSnapshot(runtimeState)
     local defaults = getPersistentDefaults()
     return {
@@ -121,6 +131,8 @@ local function buildPersistentSnapshot(runtimeState)
     }
 end
 
+-- Update the existing Lua data table in place so MWSE keeps the table shape it
+-- expects inside tes3.player.data.
 local function syncLuaDataTable(target, source)
     for key in pairs(target) do
         if source[key] == nil then
@@ -148,6 +160,8 @@ local function requireLoadedState()
     return state
 end
 
+-- Date entries act like structural separators in the custom journal, so many
+-- features branch on this check.
 local function isDateEntry(entry)
     return type(entry) == "table" and entry.entryType == ENTRY_TYPE_DATE
 end
@@ -168,6 +182,8 @@ local function getDateKind(entry)
     return DATE_KIND_MANUAL
 end
 
+-- Only notes with a captured world date are eligible for automatic date-entry
+-- grouping.
 local function isCapturedDatedNote(entry)
     return type(entry) == "table"
         and isDateEntry(entry) ~= true
@@ -184,6 +200,8 @@ local function clearCapturedDateMetadata(entry)
     entry.dateKey = nil
 end
 
+-- Custom ordering uses gaps so new notes can be inserted between existing
+-- entries without renumbering the entire journal every time.
 local function getEntryOrderValue(entry, fallbackIndex)
     if type(entry.customOrder) == "number" then
         return entry.customOrder
@@ -230,6 +248,8 @@ local function findAutoDateEntryByKey(dateKey)
     return nil
 end
 
+-- Normalize legacy or partially migrated date-entry state before the runtime
+-- starts using it for rendering and ordering.
 local function normalizeLoadedDateState(loadedState)
     local entries = loadedState.entries or {}
     local validAutoDateKeys = {}
@@ -291,6 +311,8 @@ local function normalizeLoadedDateState(loadedState)
     return changed
 end
 
+-- Validate and normalize every entry that enters the data store so downstream
+-- modules can rely on a consistent shape.
 local function validateEntry(entry)
     if type(entry) ~= "table" then
         error("invalid entry: expected table.")
@@ -347,6 +369,8 @@ local function validateEntry(entry)
     return entry
 end
 
+-- Player-created entries use generated ids because they are not backed by a
+-- quest id + index pair from the engine.
 local function generateEntryId(prefix)
     local entries = requireLoadedState().entries
     local index = 1
@@ -360,6 +384,7 @@ local function generateEntryId(prefix)
     end
 end
 
+-- All entry writes flow through one helper so validation stays centralized.
 local function upsertEntry(entry)
     local loadedState = requireLoadedState()
     loadedState.entries[entry.id] = validateEntry(entry)
@@ -448,6 +473,8 @@ local function compareEntriesLegacy(left, right)
     return tostring(left.id or "") < tostring(right.id or "")
 end
 
+-- Custom order wins when present; legacy chronological order remains the
+-- fallback for older or partially initialized data.
 local function compareEntries(left, right)
     local leftOrder = type(left.customOrder) == "number" and left.customOrder or nil
     local rightOrder = type(right.customOrder) == "number" and right.customOrder or nil
@@ -459,6 +486,8 @@ local function compareEntries(left, right)
     return compareEntriesLegacy(left, right)
 end
 
+-- Renderable entries are the non-deleted subset, optionally sorted by custom
+-- order when that feature has been initialized.
 local function collectRenderableEntries(useCustomOrder)
     local loadedState = requireLoadedState()
     local list = {}
@@ -473,6 +502,8 @@ local function collectRenderableEntries(useCustomOrder)
     return list
 end
 
+-- Assign evenly spaced ordering values so later inserts can land between two
+-- existing entries without renumbering everything immediately.
 local function assignSequentialCustomOrder(entries)
     for index, entry in ipairs(entries or {}) do
         entry.customOrder = index * CUSTOM_ORDER_GAP
@@ -481,6 +512,8 @@ local function assignSequentialCustomOrder(entries)
     dirty = true
 end
 
+-- Load journal state from Lua data first, then fall back to the legacy config
+-- format for one-time migration support.
 function M.load(profileKey)
     currentProfileKey = sanitizeProfileKey(profileKey)
     local persistedState = loadPersistedStateFromSave()
@@ -527,6 +560,8 @@ function M.save()
     return state
 end
 
+-- Push the persisted snapshot into tes3.player.data right before the game save
+-- is written.
 function M.flush(saveFilename)
     local loadedState = requireLoadedState()
     if saveFilename ~= nil then
@@ -545,7 +580,6 @@ function M.flush(saveFilename)
     syncLuaDataTable(playerData[saveDataKey], buildPersistentSnapshot(loadedState))
     player.modified = true
     dirty = false
-    logger.debug("Journal data preparado para persistir dentro do save '%s'.", currentProfileKey)
     logger.debug("Journal data prepared to persist inside save '%s'.", currentProfileKey)
     return loadedState, true
 end
@@ -574,6 +608,8 @@ function M.getEntries()
     return requireLoadedState().entries
 end
 
+-- Engine entries preserve user edits and visibility flags if the same quest
+-- step is captured again later.
 function M.upsertEngineEntry(entry)
     entry.source = "engine"
     entry.dateCaptured = entry.dateCaptured == true and journalDate.hasWorldDate(entry) or false
@@ -602,6 +638,8 @@ function M.upsertEngineEntry(entry)
     return upsertEntry(entry)
 end
 
+-- Player-created notes and date entries share one constructor so persistence,
+-- ordering, and defaults stay consistent.
 function M.createPlayerEntry(params)
     local entryType = params.entryType == ENTRY_TYPE_DATE and ENTRY_TYPE_DATE or ENTRY_TYPE_NOTE
     local dateKind = params.dateKind == DATE_KIND_AUTO and DATE_KIND_AUTO or DATE_KIND_MANUAL
@@ -653,6 +691,8 @@ function M.createPlayerEntry(params)
     return upsertEntry(entry)
 end
 
+-- Insert a new player entry after the chosen anchor using the current custom
+-- order gaps.
 function M.createPlayerEntryAfter(afterEntryId, params)
     M.ensureCustomOrderInitialized()
 
@@ -664,6 +704,8 @@ function M.createPlayerEntryAfter(afterEntryId, params)
     return M.createPlayerEntry(entryParams)
 end
 
+-- Insert a new player entry before the chosen anchor using the current custom
+-- order gaps.
 function M.createPlayerEntryBefore(beforeEntryId, params)
     M.ensureCustomOrderInitialized()
 
@@ -675,6 +717,7 @@ function M.createPlayerEntryBefore(beforeEntryId, params)
     return M.createPlayerEntry(entryParams)
 end
 
+-- Date entries are specialized player entries with stricter label handling.
 function M.createDateEntry(params)
     local entryParams = clone(params or {})
     entryParams.entryType = ENTRY_TYPE_DATE
@@ -697,6 +740,8 @@ function M.createDateEntryBefore(beforeEntryId, params)
     return M.createPlayerEntryBefore(beforeEntryId, entryParams)
 end
 
+-- Editing a date entry updates the resolved label fields, while regular entries
+-- only replace editedText.
 function M.updateEditedText(id, text)
     local entry = M.getEntry(id)
     if not entry then
@@ -770,6 +815,8 @@ function M.isDateEntry(value)
     return isDateEntry(value)
 end
 
+-- Automatic date entries are created lazily the first time a dated note for a
+-- given calendar day appears.
 function M.ensureDateEntryForEntry(entryId)
     local entry = M.getEntry(entryId)
     if not entry or entry.deleted == true or isDateEntry(entry) or not isCapturedDatedNote(entry) then
@@ -802,6 +849,8 @@ function M.ensureDateEntryForEntry(entryId)
     return created, created ~= nil
 end
 
+-- Rebuild missing automatic date entries for older saves or newly migrated
+-- journal data.
 function M.ensureDateEntriesInitialized()
     local renderableEntries = collectRenderableEntries(false)
     if #renderableEntries == 0 then
@@ -846,6 +895,7 @@ function M.ensureDateEntriesInitialized()
     return createdCount
 end
 
+-- Initialize custom order only when the current data shape needs it.
 function M.ensureCustomOrderInitialized()
     local renderableEntries = collectRenderableEntries(false)
     local seen = {}
@@ -868,6 +918,8 @@ function M.ensureCustomOrderInitialized()
     return true
 end
 
+-- Debug seeding gives the save a known local entry that proves save-scoped
+-- persistence is working.
 function M.ensureDebugSeedEntry()
     local loadedState = requireLoadedState()
     local existing = loadedState.entries.debug_seed_note
@@ -887,6 +939,7 @@ function M.ensureDebugSeedEntry()
     return created, true
 end
 
+-- Input and mapping consume ordered ids without needing full entry tables.
 function M.getOrderedEntryIds()
     local list = collectRenderableEntries(true)
 

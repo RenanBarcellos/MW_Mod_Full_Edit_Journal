@@ -3,6 +3,8 @@ local input = require("journal_custom.journal.input")
 
 local modName = "Journal Custom"
 
+-- All shortcut binders share the same defaults and storage location, so keep
+-- that wiring in one helper.
 local function createShortcutBinder(category, shortcutId, label, description)
     category:createKeyBinder({
         label = label,
@@ -17,6 +19,8 @@ local function createShortcutBinder(category, shortcutId, label, description)
     })
 end
 
+-- Expose the runtime feature flags and shortcuts through MCM so testing and
+-- rollout do not require code edits.
 local function registerModConfig()
     local template = mwse.mcm.createTemplate({
         name = modName,

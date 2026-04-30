@@ -39,11 +39,14 @@ local typingSoundState = {
     token = 0,
 }
 
+-- Typing feedback is throttled so fast key repeats do not spam the page-turn
+-- sound effect.
 local function resetTypingFeedback()
     typingSoundState.cooldown = false
     typingSoundState.token = typingSoundState.token + 1
 end
 
+-- Use a tokenized cooldown so reopening the editor invalidates older timers.
 local function armTypingCooldown()
     typingSoundState.cooldown = true
     typingSoundState.token = typingSoundState.token + 1
@@ -62,6 +65,7 @@ local function armTypingCooldown()
     })
 end
 
+-- Only keys that change text should trigger the writing sound.
 local function isWritingKey(e)
     local keyCode = e and (e.keyCode or e.data0) or nil
     if type(keyCode) ~= "number" then
@@ -83,6 +87,7 @@ local function isWritingKey(e)
     return true
 end
 
+-- Play a subtle writing sound while editing without overlapping aggressively.
 local function playTypingSound()
     if typingSoundState.cooldown then
         return false
@@ -112,6 +117,8 @@ local function destroyMenu()
     end
 end
 
+-- Every editor exit path hands the same payload shape back to book.lua so save,
+-- cancel, and delete flows stay symmetrical.
 local function buildPayload(session)
     local draftText = session.draftText or session.originalText or ""
     if session.input then
@@ -128,6 +135,8 @@ local function buildPayload(session)
     }
 end
 
+-- Close the modal first, then dispatch the callback so rebuild logic runs with
+-- a clean UI state.
 local function finalize(actionKey)
     if not activeSession then
         return false
@@ -164,6 +173,8 @@ function M.noteTyping(e)
     return playTypingSound()
 end
 
+-- Open a standalone modal editor so writing never fights MenuBook pagination or
+-- selection controls.
 function M.open(params)
     if M.isActive() then
         logger.debug("journal_custom editor was already active for %s.", tostring(M.getEntryId()))

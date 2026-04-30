@@ -13,6 +13,8 @@ local BODY_WORD_WINDOW_MIN = 3
 local BODY_WORD_WINDOW_MAX = 5
 local BODY_WORD_WINDOW_STEP = 2
 
+-- Matching is tolerant to layout whitespace and hyphenation because MenuBook
+-- can split the same body text differently between pages.
 local function collapseMatchWhitespace(value)
     local collapsed = tostring(value or "")
     collapsed = collapsed:gsub("%s+", " ")
@@ -37,6 +39,8 @@ local sessionState = {
     signatureToPage = {},
 }
 
+-- Normalize any rendered fragment into the same comparison surface used by the
+-- entry matchers.
 local function normalizeMatchText(value)
     local normalized = text.stripJournalMarkup(value)
     normalized = text.stripBookHtml(normalized)
@@ -44,6 +48,8 @@ local function normalizeMatchText(value)
     return collapseMatchWhitespace(normalized)
 end
 
+-- Larger entries use longer fragments, while short entries still get a usable
+-- minimum-sized matching window.
 local function resolveSegmentLength(textLength)
     if textLength <= BODY_SEGMENT_MIN_LENGTH then
         return textLength
@@ -52,6 +58,8 @@ local function resolveSegmentLength(textLength)
     return math.min(BODY_SEGMENT_LENGTH, math.max(BODY_SEGMENT_MIN_LENGTH, math.floor(textLength * 0.6)))
 end
 
+-- Keep matcher order aligned with render order so later sorting can reproduce
+-- the same visual sequence.
 local function getRenderableEntries(state)
     local list = {}
 
@@ -74,6 +82,8 @@ local function appendUnique(target, seen, value)
     target[#target + 1] = value
 end
 
+-- Build overlapping fragments and short word windows so matching still works
+-- when MenuBook shows only part of an entry body on a page.
 local function collectBodySegments(body)
     local normalizedBody = normalizeMatchText(body)
     if normalizedBody == "" then
@@ -113,6 +123,7 @@ local function collectBodySegments(body)
     return segments
 end
 
+-- Each entry matcher combines exact fragments with smaller fallback segments.
 local function buildEntryMatcher(entry)
     local exactFragments = {}
     local seenFragments = {}
@@ -126,6 +137,7 @@ local function buildEntryMatcher(entry)
     }
 end
 
+-- Collect normalized visible text from a concrete page element tree.
 local function collectVisibleText(element, fragments)
     if not element or element.visible == false then
         return fragments
@@ -237,6 +249,8 @@ local function getKnownSpreadStart(state, blocks)
     return bestPage
 end
 
+-- If the current spread cannot be read directly, fall back to historical page
+-- data saved on entries and page-cache signatures.
 local function resolveSpreadStart(state, blocks)
     local signature = buildSpreadSignature(blocks)
     if signature == "" then
@@ -270,6 +284,7 @@ local function resolveSpreadStart(state, blocks)
     return 1, signature
 end
 
+-- Prefer exact body matches, then fall back to partial body segments.
 local function scorePageMatch(pageText, matcher)
     for _, fragment in ipairs(matcher.exactFragments or {}) do
         if fragment ~= "" and pageText:find(fragment, 1, true) then
@@ -305,6 +320,8 @@ function M.getCurrentSpreadStart(menu)
     return parseSpreadStart(tostring(pageNumberElement.text or ""))
 end
 
+-- Rebuild the visible block list by matching rendered page text back to the
+-- ordered saved entries.
 function M.collectVisibleBlocks(menu, state)
     local blocks = {}
 
@@ -430,6 +447,7 @@ function M.findBlockByEntryId(blocks, entryId)
     return nil
 end
 
+-- Persist only the minimal signature needed to restore context on later opens.
 function M.updatePageCache(state, pageNumber, blocks)
     if type(state) ~= "table" or type(pageNumber) ~= "number" then
         return false
