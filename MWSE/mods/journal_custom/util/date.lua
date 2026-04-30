@@ -127,7 +127,7 @@ function M.buildDisplayDate(value)
         return existingLabel
     end
 
-    return "Data desconhecida"
+    return "Unknown date"
 end
 
 function M.resolveEntryDateLabel(entry)

@@ -1,20 +1,20 @@
-## Regras do projeto
+## Project Rules
 
-- Trate `G:\Modding\Outlander\mods` e todas as subpastas como somente leitura.
-- Nunca criar, editar, sobrescrever, mover, renomear ou apagar arquivos dentro de `G:\Modding\Outlander\mods`.
-- Nunca executar scripts, deploys ou comandos que escrevam em `G:\Modding\Outlander\mods`.
-- Operacoes permitidas nessa arvore: listar, ler, buscar e copiar arquivos dela para dentro deste workspace.
-- Toda modificacao de codigo, organizacao de arquivos e arquivos de referencia deste projeto deve acontecer em `C:\Dev\MW_Mod_Full_Edit_Journal`, a menos que o usuario mude essa regra explicitamente.
-- Este workspace representa um unico mod por projeto. Nao criar uma segunda pasta de mod na raiz.
-- O identificador tecnico do mod deve ser ASCII, minusculo e sem espacos, preferencialmente em `snake_case`.
-- A estrutura obrigatoria deste projeto e:
+- Treat `G:\Modding\Outlander\mods` and all of its subfolders as read-only.
+- Never create, edit, overwrite, move, rename, or delete files inside `G:\Modding\Outlander\mods`.
+- Never run scripts, deploys, or commands that write into `G:\Modding\Outlander\mods`.
+- Allowed operations in that tree: list, read, search, and copy files from it into this workspace.
+- All code changes, file organization, and reference files for this project must live in `C:\Dev\MW_Mod_Full_Edit_Journal`, unless the user explicitly changes that rule.
+- This workspace represents a single mod per project. Do not create a second mod folder at the repository root.
+- The technical mod identifier must be ASCII, lowercase, and space-free, preferably in `snake_case`.
+- The required structure for this project is:
 	`doc\...`
 	`<mod-id>-metadata.toml`
 	`MWSE\mods\<mod-id>\...`
-- O valor de `[tools.mwse].lua-mod` deve ser igual ao `<mod-id>`.
-- O deploy deve operar no mod unico da raiz do projeto, nunca esperando uma colecao de mods em subpastas.
-- As referencias externas de MWSE e mods de exemplo ficam em `C:\dev\Morrowind-ref` e devem ser tratadas como leitura/consulta, salvo instrucao explicita do usuario.
-- Consulte `C:\dev\Morrowind-ref\MWSE-ref` para API/documentacao MWSE e `C:\dev\Morrowind-ref\Mods de exemplo` para exemplos de implementacao.
-- Consulte `C:\dev\Morrowind-ref\Snippets` para snippets e notas reutilizaveis antes de recriar boilerplate.
-- Considere tambem `C:\dev\Morrowind-ref\OpenMW-ref` como local de consulta para projetos OpenMW futuros, mesmo que essa referencia ainda nao exista no disco.
-- Toda documentacao interna do projeto deve ficar em `doc\`.
+- The value of `[tools.mwse].lua-mod` must match `<mod-id>`.
+- Deploy must operate on the single mod at the project root and must not assume a collection of mods in subfolders.
+- External MWSE and example mod references live in `C:\dev\Morrowind-ref` and must be treated as read-only reference material unless the user explicitly says otherwise.
+- Use `C:\dev\Morrowind-ref\MWSE-ref` for MWSE API and documentation reference, and `C:\dev\Morrowind-ref\Mods de exemplo` for implementation examples.
+- Use `C:\dev\Morrowind-ref\Snippets` for reusable snippets and notes before recreating boilerplate.
+- Also consider `C:\dev\Morrowind-ref\OpenMW-ref` as the reference location for future OpenMW projects, even if it does not exist on disk yet.
+- All internal project documentation must live in `doc\`.

@@ -125,7 +125,7 @@ end
 function M.run()
     local state = data.getState()
     if not M.needsMigration(state) then
-        logger.debug("Migracao ignorada para save '%s': ja concluida.", data.getProfileKey())
+        logger.debug("Migration skipped for save '%s': already completed.", data.getProfileKey())
         return {
             imported = 0,
             touched = 0,
@@ -133,7 +133,7 @@ function M.run()
         }
     end
 
-    logger.info("Iniciando migracao do journal para o save '%s'.", data.getProfileKey())
+    logger.info("Starting journal migration for save '%s'.", data.getProfileKey())
 
     local totalImported = 0
     local totalTouched = 0
@@ -157,7 +157,7 @@ function M.run()
     data.save()
 
     logger.info(
-        "Migracao concluida para o save '%s': %d entries ativas processadas, %d novas importadas.",
+        "Migration completed for save '%s': %d active entries processed, %d new entries imported.",
         data.getProfileKey(),
         totalTouched,
         totalImported

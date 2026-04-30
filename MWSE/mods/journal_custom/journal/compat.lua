@@ -65,7 +65,7 @@ local function runOpenBookCallback(openBookCallback)
 
     local ok, err = pcall(openBookCallback)
     if not ok then
-        logger.error("Falha ao executar callback do journal_custom: %s", err)
+        logger.error("Failed to execute journal_custom callback: %s", err)
     end
 end
 
@@ -76,12 +76,12 @@ local function openVanillaJournal()
 
     allowVanillaJournalActivation = allowVanillaJournalActivation + 1
     if tes3ui.showJournal() then
-        logger.info("Journal vanilla aberto por Shift+J.")
+        logger.info("Vanilla journal opened through Shift+J.")
         return true
     end
 
     allowVanillaJournalActivation = math.max(0, allowVanillaJournalActivation - 1)
-    logger.warn("Falha ao abrir o journal vanilla por Shift+J.")
+    logger.warn("Failed to open the vanilla journal through Shift+J.")
     return false
 end
 
@@ -123,7 +123,7 @@ function M.registerKeybindRedirect(openBookCallback)
         if isShiftHeld() then
             local shouldSuppress, reason = M.shouldSuppressJournalKeybind()
             if shouldSuppress then
-                logger.debug("Shift+J consumido sem abrir o journal vanilla (%s).", tostring(reason))
+                logger.debug("Shift+J consumed without opening the vanilla journal (%s).", tostring(reason))
                 e.result = false
                 return false
             end
@@ -135,12 +135,12 @@ function M.registerKeybindRedirect(openBookCallback)
 
         local shouldSuppress, reason = M.shouldSuppressJournalKeybind()
         if shouldSuppress then
-            logger.debug("Keybind do journal consumido sem abrir o journal_custom (%s).", tostring(reason))
+            logger.debug("Journal keybind consumed without opening journal_custom (%s).", tostring(reason))
             e.result = false
             return false
         end
 
-        logger.debug("Redirecionando keybind do journal para o journal_custom.")
+        logger.debug("Redirecting journal keybind to journal_custom.")
         e.result = false
         runOpenBookCallback(openBookCallback)
     end, { filter = tes3.keybind.journal })
@@ -164,14 +164,14 @@ function M.registerVanillaJournalSuppression()
         end
 
         if tes3ui.closeJournal() then
-            logger.debug("MenuJournal vanilla fechado pela camada de compatibilidade.")
+            logger.debug("Vanilla MenuJournal closed by the compatibility layer.")
             return
         end
 
         local menu = tes3ui.findMenu("MenuJournal")
         if menu then
             menu:destroy()
-            logger.debug("MenuJournal vanilla destruido pela camada de compatibilidade.")
+            logger.debug("Vanilla MenuJournal destroyed by the compatibility layer.")
         end
     end, { filter = "MenuJournal" })
 

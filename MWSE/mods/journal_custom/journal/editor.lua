@@ -166,23 +166,23 @@ end
 
 function M.open(params)
     if M.isActive() then
-        logger.debug("Editor do journal_custom ja estava ativo para %s.", tostring(M.getEntryId()))
+        logger.debug("journal_custom editor was already active for %s.", tostring(M.getEntryId()))
         return false
     end
 
     local entry = params and params.entry or nil
     if type(entry) ~= "table" or type(entry.id) ~= "string" or entry.id == "" then
-        logger.warn("Tentativa de abrir editor sem entry valida.")
+        logger.warn("Attempted to open editor without a valid entry.")
         return false
     end
 
     destroyMenu()
 
-    local titleText = params.titleText or string.format("Editar: %s", render.buildHeaderTitle(entry))
+    local titleText = params.titleText or string.format("Edit: %s", render.buildHeaderTitle(entry))
     local helpText = params.helpText or "Use the configured save and cancel shortcuts, or the buttons below."
     local inputText = tostring(params.initialText or entry.editedText or entry.originalText or "")
     local showDelete = params.showDelete ~= false
-    local deleteButtonText = params.deleteButtonText or "Apagar"
+    local deleteButtonText = params.deleteButtonText or "Delete"
 
     local menu = tes3ui.createMenu({ id = MENU_ID, fixedFrame = true, modal = true })
     menu.alpha = 1.0
@@ -218,13 +218,13 @@ function M.open(params)
     buttonRow.autoHeight = true
     buttonRow.flowDirection = "left_to_right"
 
-    local saveButton = buttonRow:createButton({ id = SAVE_BUTTON_ID, text = "Salvar" })
+    local saveButton = buttonRow:createButton({ id = SAVE_BUTTON_ID, text = "Save" })
     saveButton.borderRight = 8
     saveButton:register("mouseClick", function()
         M.commit()
     end)
 
-    local cancelButton = buttonRow:createButton({ id = CANCEL_BUTTON_ID, text = "Cancelar" })
+    local cancelButton = buttonRow:createButton({ id = CANCEL_BUTTON_ID, text = "Cancel" })
     cancelButton.borderRight = 8
     cancelButton:register("mouseClick", function()
         M.cancel()
@@ -261,7 +261,7 @@ function M.open(params)
     menu:getTopLevelMenu():updateLayout()
     tes3ui.acquireTextInput(input)
 
-    logger.info("Editor do journal_custom aberto para %s.", tostring(entry.id))
+    logger.info("journal_custom editor opened for %s.", tostring(entry.id))
     return true
 end
 

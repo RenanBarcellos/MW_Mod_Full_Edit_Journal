@@ -1,6 +1,6 @@
 local config = require("journal_custom.config")
 
-local logger = mwse.Logger.new("Mod 1 - Journal Customizado")
+local logger = mwse.Logger.new("Mod 1 - Custom Journal")
 
 local M = {}
 

@@ -80,7 +80,7 @@ end
 local function requirePlayerData()
     local player = tes3.player
     if not player or not player.supportsLuaData then
-        error("journal_custom.journal.data precisa de tes3.player com suporte a Lua data.")
+        error("journal_custom.journal.data requires tes3.player with Lua data support.")
     end
 
     return player.data, player
@@ -142,7 +142,7 @@ end
 
 local function requireLoadedState()
     if not state then
-        error("journal_custom.journal.data foi usado antes de load().")
+        error("journal_custom.journal.data was used before load().")
     end
 
     return state
@@ -293,11 +293,11 @@ end
 
 local function validateEntry(entry)
     if type(entry) ~= "table" then
-        error("entry invalida: esperado table.")
+        error("invalid entry: expected table.")
     end
 
     if type(entry.id) ~= "string" or entry.id == "" then
-        error("entry invalida: id obrigatorio.")
+        error("invalid entry: id is required.")
     end
 
     entry.entryType = entry.entryType == ENTRY_TYPE_DATE and ENTRY_TYPE_DATE or ENTRY_TYPE_NOTE
@@ -312,7 +312,7 @@ local function validateEntry(entry)
     end
 
     if entry.source ~= "engine" and entry.source ~= "player" then
-        error("entry invalida: source deve ser 'engine' ou 'player'.")
+        error("invalid entry: source must be 'engine' or 'player'.")
     end
 
     if not isDateEntry(entry) and entry.dateCaptured ~= true then
@@ -332,7 +332,7 @@ local function validateEntry(entry)
         entry.displayDate = label
     else
         if entry.displayDate == nil then
-            entry.displayDate = entry.source == "player" and "Nota" or "Entrada do journal"
+            entry.displayDate = entry.source == "player" and "Note" or "Journal entry"
         end
 
         if entry.editedText == nil then
@@ -491,15 +491,15 @@ function M.load(profileKey)
         if legacyState then
             persistedState = legacyState
             dirty = true
-            source = string.format("legado:%s", legacyPath)
+            source = string.format("legacy:%s", legacyPath)
             logger.info(
-                "Journal data legado encontrado para '%s' e sera migrado para dentro do save no proximo salvamento.",
+                "Legacy journal data found for '%s' and will be migrated into the save on the next write.",
                 currentProfileKey
             )
         else
             persistedState = getPersistentDefaults()
             dirty = false
-            source = "novo"
+            source = "new"
         end
     else
         dirty = false
@@ -511,9 +511,9 @@ function M.load(profileKey)
     end
     local insertedDateEntries = M.ensureDateEntriesInitialized()
     if insertedDateEntries > 0 then
-        logger.info("Entries de data inicializadas para o save '%s': %d.", currentProfileKey, insertedDateEntries)
+        logger.info("Date entries initialized for save '%s': %d.", currentProfileKey, insertedDateEntries)
     end
-    logger.debug("Journal data carregado para '%s' (%s).", currentProfileKey, source)
+    logger.debug("Journal data loaded for '%s' (%s).", currentProfileKey, source)
     return state
 end
 
@@ -521,7 +521,7 @@ function M.save()
     requireLoadedState()
     dirty = true
     logger.debug(
-        "Journal data marcado como alterado no estado em memoria do save '%s'.",
+        "Journal data marked as changed in the in-memory state for save '%s'.",
         tostring(currentProfileKey)
     )
     return state
@@ -546,6 +546,7 @@ function M.flush(saveFilename)
     player.modified = true
     dirty = false
     logger.debug("Journal data preparado para persistir dentro do save '%s'.", currentProfileKey)
+    logger.debug("Journal data prepared to persist inside save '%s'.", currentProfileKey)
     return loadedState, true
 end
 
@@ -610,7 +611,7 @@ function M.createPlayerEntry(params)
         if entryType == ENTRY_TYPE_DATE then
             displayDate = journalDate.resolveEntryDateLabel(params)
         else
-            displayDate = params.source == "player" and "Nota" or "Entrada do journal"
+            displayDate = params.source == "player" and "Note" or "Journal entry"
         end
     end
 
@@ -877,7 +878,7 @@ function M.ensureDebugSeedEntry()
 
     local created = M.createPlayerEntry({
         id = "debug_seed_note",
-        editedText = "Nota de debug criada automaticamente para validar a persistencia local do journal_custom.",
+        editedText = "Debug note created automatically to validate local journal_custom persistence.",
         displayDate = "Debug",
         tags = { "debug" },
     })

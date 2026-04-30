@@ -5,7 +5,7 @@ local text = require("journal_custom.util.text")
 local M = {}
 local DEFAULT_ENTRY_COLOR = "000000"
 local DATE_ENTRY_COLOR = "9F0000"
-local DATE_ENTRY_EMPTY_TEXT = "(sem data)"
+local DATE_ENTRY_EMPTY_TEXT = "(no date)"
 
 local function wrapEntryMarkup(markup, alignment)
     return string.format('<div align="%s">%s</div>', alignment or "left", markup)
@@ -46,27 +46,27 @@ function M.buildHeaderTitle(entry)
         return string.format("%s [%d]", questId, questIndex)
     end
 
-    return tostring(entry.displayDate or "Nota")
+    return tostring(entry.displayDate or "Note")
 end
 
 function M.buildHeaderSubtitle(entry)
     if isDateEntry(entry) then
-        return "Entrada de data"
+        return "Date entry"
     end
 
     if type(entry.daysPassed) == "number" then
-        return string.format("Dia %d", entry.daysPassed)
+        return string.format("Day %d", entry.daysPassed)
     end
 
     if entry.source == "player" then
-        return "Entrada do jogador"
+        return "Player entry"
     end
 
     if not entry.questId then
-        return "Entrada do journal"
+        return "Journal entry"
     end
 
-    return "Entrada registrada"
+    return "Recorded entry"
 end
 
 function M.buildEntryBody(entry)
@@ -84,7 +84,7 @@ function M.buildEntryBody(entry)
     })
 
     if body == "" then
-        return "(sem texto)"
+        return "(no text)"
     end
 
     return body
@@ -114,7 +114,7 @@ function M.renderBook(entries, context)
 
     local list = data.getRenderableEntries()
     if #list == 0 then
-        parts[#parts + 1] = wrapEntryMarkup('<font color="000000" size="3">Nenhuma entrada encontrada.</font>') .. '<br>'
+        parts[#parts + 1] = wrapEntryMarkup('<font color="000000" size="3">No entries found.</font>') .. '<br>'
         return table.concat(parts)
     end
 

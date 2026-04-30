@@ -101,11 +101,11 @@ function Ensure-ValidModLayout {
     )
 
     if ($ModInfo.LuaMod -ne $ModInfo.Id) {
-        throw "Mod '$($ModInfo.Id)' invalido: lua-mod '$($ModInfo.LuaMod)' deve ser igual ao id da pasta '$($ModInfo.Id)'."
+        throw "Invalid mod '$($ModInfo.Id)': lua-mod '$($ModInfo.LuaMod)' must match the folder id '$($ModInfo.Id)'."
     }
 
     if (-not (Test-Path $ModInfo.MainPath)) {
-        throw "Mod '$($ModInfo.Id)' invalido: entry point ausente em '$($ModInfo.MainPath)'."
+        throw "Invalid mod '$($ModInfo.Id)': missing entry point at '$($ModInfo.MainPath)'."
     }
 }
 
@@ -229,24 +229,24 @@ function Copy-Mod {
         }
     }
 
-    Write-Host "Pronto: $($ModInfo.Id)"
+    Write-Host "Done: $($ModInfo.Id)"
 }
 
 $mods = @(Get-ProjectMods)
 
 if ($mods.Count -eq 0) {
-    throw "Nenhum mod valido encontrado. Esperado na raiz do projeto: <mod-id>-metadata.toml e MWSE\\mods\\<mod-id>\\main.lua."
+    throw "No valid mod found. Expected at the project root: <mod-id>-metadata.toml and MWSE\\mods\\<mod-id>\\main.lua."
 }
 
 if ($mods.Count -gt 1) {
     $foundMods = ($mods | Sort-Object Id | ForEach-Object { $_.Id }) -join ", "
-    throw "Mais de um mod valido encontrado na raiz do projeto: $foundMods. Este repositorio deve conter apenas um mod."
+    throw "More than one valid mod was found at the project root: $foundMods. This repository must contain only one mod."
 }
 
 $mods | ForEach-Object { Ensure-ValidModLayout -ModInfo $_ }
 
 if ($List) {
-    Write-Host "Mods disponiveis:"
+    Write-Host "Available mods:"
     $mods | Sort-Object Id | ForEach-Object {
         Write-Host ("- {0} [{1}]" -f $_.Id, $_.PackageName)
     }
@@ -266,11 +266,11 @@ elseif ($Mod) {
     )
 
     if ($selectedMods.Count -eq 0) {
-        Write-Host "Mods disponiveis:"
+        Write-Host "Available mods:"
         $mods | Sort-Object Id | ForEach-Object {
             Write-Host ("- {0} [{1}]" -f $_.Id, $_.PackageName)
         }
-        throw "Mod '$Mod' nao encontrado."
+        throw "Mod '$Mod' not found."
     }
 }
 else {
@@ -278,11 +278,11 @@ else {
         $selectedMods = $mods
     }
     else {
-        Write-Host "Mods disponiveis:"
+        Write-Host "Available mods:"
         $mods | Sort-Object Id | ForEach-Object {
             Write-Host ("- {0} [{1}]" -f $_.Id, $_.PackageName)
         }
-        throw "Use -Mod <id> ou -All."
+        throw "Use -Mod <id> or -All."
     }
 }
 
@@ -290,4 +290,4 @@ foreach ($modInfo in $selectedMods) {
     Copy-Mod -ModInfo $modInfo
 }
 
-Write-Host "Deploy concluido."
+Write-Host "Deploy completed."

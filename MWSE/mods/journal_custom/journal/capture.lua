@@ -111,7 +111,7 @@ end
 
 local function onJournal(e)
     if not data.getProfileKey() then
-        logger.warn("Evento journal recebido antes do journal_custom carregar os dados do save.")
+        logger.warn("Journal event received before journal_custom loaded the save data.")
         return
     end
 
@@ -124,13 +124,13 @@ local function onJournal(e)
 
     if existing then
         logger.info(
-            "Journal capturado: quest '%s' indice %d atualizada.",
+            "Journal captured: quest '%s' index %d updated.",
             entry.questId,
             entry.questIndex
         )
     else
         logger.info(
-            "Journal capturado: quest '%s' indice %d registrada.",
+            "Journal captured: quest '%s' index %d recorded.",
             entry.questId,
             entry.questIndex
         )
@@ -152,7 +152,7 @@ local function flushPendingFreeformEntries()
 
     pendingFreeformEntries = {}
     data.save()
-    logger.info("Journal livre capturado apos load: %d entries registradas.", createdCount)
+    logger.info("Freeform journal captured after load: %d entries recorded.", createdCount)
     return createdCount
 end
 
@@ -179,9 +179,9 @@ local function wrapAddJournalEntry()
         data.save()
 
         if created then
-            logger.info("Journal livre capturado via addJournalEntry: '%s'.", entry.id)
+            logger.info("Freeform journal captured through addJournalEntry: '%s'.", entry.id)
         else
-            logger.debug("Journal livre ja existia via addJournalEntry: '%s'.", entry.id)
+            logger.debug("Freeform journal already existed through addJournalEntry: '%s'.", entry.id)
         end
     end)
 end

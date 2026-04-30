@@ -1,8 +1,8 @@
 # MW_Mod_Full_Edit_Journal
 
-Projeto MWSE focado em um journal customizado para Morrowind, no modelo de um mod por repositorio.
+MWSE project focused on a custom journal for Morrowind, following a one-mod-per-repository layout.
 
-## Estrutura do projeto
+## Project Structure
 
 ```text
 MW_Mod_Full_Edit_Journal/
@@ -12,7 +12,7 @@ MW_Mod_Full_Edit_Journal/
 └── MWSE/mods/journal_custom/
 ```
 
-## Comandos principais
+## Main Commands
 
 ```powershell
 .\deploy.ps1 -List
@@ -21,21 +21,29 @@ MW_Mod_Full_Edit_Journal/
 .\deploy.ps1 -Clean
 ```
 
-## Referencias externas
+## Useful Automation
+
+- VS Code task: `Morrowind: Generate New MWSE Project`
+- VS Code task: `Morrowind: Validate Current Project Placeholders`
+- generator shortcut: `C:\dev\Morrowind-ref\scripts\new-mwse-mod.bat`
+- placeholder validator: `C:\dev\Morrowind-ref\scripts\Test-MWSEProjectPlaceholders.ps1`
+
+## External References
 
 - `C:\dev\Morrowind-ref\MWSE-ref`
 - `C:\dev\Morrowind-ref\Mods de exemplo`
 - `C:\dev\Morrowind-ref\Snippets`
-- `C:\dev\Morrowind-ref\OpenMW-ref` como referencia futura para projetos OpenMW
+- `C:\dev\Morrowind-ref\OpenMW-ref` as a future reference for OpenMW projects
 
-## Documentacao interna
+## Internal Documentation
 
-- `doc\Estrutura do Projeto.md`
-- `doc\Deploy - Comandos.md`
+- `doc\Automation - Commands.md`
+- `doc\Project Structure.md`
+- `doc\Deploy - Commands.md`
 - `doc\Release - Checklist.md`
 
 ## Status
 
-- mod unico do projeto: `journal_custom`
-- metadata na raiz do repositorio
-- deploy validado no modelo single-mod
+- single mod in the repository: `journal_custom`
+- metadata at the repository root
+- deploy validated in single-mod mode

@@ -1,65 +1,64 @@
-# Fase 7 — Análise e correção definitiva da seleção
+# Phase 7 — Selection analysis and definitive fix
 
-## Diagnóstico
+## Diagnosis
 
-### Problema 1 — Seleção limitada às páginas 1 e 2
+### Problem 1 — Selection limited to pages 1 and 2
 
-**Causa raiz**: `moveSelection` em `input.lua` usa `buildVisibleEntryList(blocks)`, que só
-contém as entries do spread visível atual. Ao chegar na última entry visível não há mais para
-onde navegar, mesmo que existam dezenas de outras entries em outros spreads.
+**Root cause**: `moveSelection` in `input.lua` uses `buildVisibleEntryList(blocks)`, which only
+contains entries from the current visible spread. When reaching the last visible entry there is nowhere
+else to navigate, even though there may be dozens of other entries in other spreads.
 
-### Problema 2 — Entry cortada entre páginas causa highlight errado e cascata de bugs
+### Problem 2 — Entry cut across pages causes wrong highlight and cascade of bugs
 
-**Causa raiz**: O modelo atual injeta dividers no DOM (`createDivider` + `reorderChildren`)
-ao redor de **um único nó de texto** (`anchor`). Quando uma entry é longa e o MenuBook a
-quebra entre páginas 1 e 2, o `findAnchorInElement` encontra um fragmento do texto no meio
-da entry e insere os dividers ali — criando o espaço em branco visível na imagem. Toda a
-navegação posterior fica comprometida porque os blocos derivados do texto visível não
-correspondem mais às posições visuais reais.
+**Root cause**: The current model injects dividers into the DOM (`createDivider` + `reorderChildren`)
+around a **single text node** (`anchor`). When a long entry is split by MenuBook across pages 1 and 2, the
+`findAnchorInElement` finds a fragment of text in the middle of the entry and inserts the dividers there —
+creating the visible white space in the image. All subsequent navigation is compromised because the blocks
+derived from visible text no longer correspond to actual visual positions.
 
-O mesmo problema ocorrerá de forma pior quando uma entry estiver inteiramente em spreads
-não exibidos ao mesmo tempo (por exemplo, início na página 2 e fim na 3).
+The same problem will occur even worse when an entry spans entirely across non-simultaneously displayed spreads
+(for example, beginning on page 2 and ending on page 3).
 
 ---
 
-## Design definitivo
+## Definitive Design
 
-### Princípio geral
+### General Principle
 
-> **Separar completamente a lógica de navegação da lógica de destaque visual.**
+> **Completely separate navigation logic from visual highlight logic.**
 
-| Aspecto | Abordagem anterior (quebrada) | Abordagem nova (definitiva) |
+| Aspect | Previous approach (broken) | New approach (definitive) |
 |---------|------------------------------|-----------------------------|
-| Lista de navegação | Só entries do spread atual | **Todas** as entries em ordem de renderização |
-| Highlight | Dividers injetados ao redor de um nó de texto | Mudança de `color` nos nós de texto que pertencem à entry |
-| Âncora de highlight | Apenas um nó — falha se for fragmento | Todos os nós correspondentes, em ambas as páginas |
-| Rebuild no keypress | Não | Não (mudança de cor é no-rebuild) |
+| Navigation list | Only entries from current spread | **All** entries in render order |
+| Highlight | Dividers injected around a text node | `color` change in text nodes belonging to the entry |
+| Highlight anchor | Only one node — fails if fragment | All corresponding nodes, on both pages |
+| Rebuild on keypress | No | No (color change is no-rebuild) |
 
-### Solução para Problema 1 — Navegação pelo full-list
+### Solution for Problem 1 — Navigation by full-list
 
-Adicionar `M.getOrderedEntryIds()` em `data.lua` (mesma ordenação do render) e usá-la em
-`book.lua` para construir um bloco de navegação que passa por *todas* as entries. A
-resolução de spread (para limpar seleção ao virar página) continua usando os blocos reais.
+Add `M.getOrderedEntryIds()` in `data.lua` (same ordering as render) and use it in
+`book.lua` to build a navigation block that goes through *all* entries. The spread resolution
+(to clear selection when turning page) continues using real blocks.
 
-### Solução para Problema 2 — Color-based highlight
+### Solution for Problem 2 — Color-based highlight
 
-Ao invés de injetar dividers, percorrer a árvore de UI nas duas páginas do spread, encontrar
-**todos** os nós de texto que pertencem à entry selecionada, e alterar a propriedade `color`
-deles para uma cor de destaque. Ao limpar a seleção, restaurar as cores originais.
+Instead of injecting dividers, traverse the UI tree on both pages of the spread, find
+**all** text nodes that belong to the selected entry, and change their `color` property
+to a highlight color. When clearing selection, restore original colors.
 
-**Vantagens:**
-- Funciona naturalmente para entries que cruzam a quebra de página
-- Sem alteração de DOM (sem `createDivider`, sem `reorderChildren`)
-- Sem espaços em branco fantasmas
-- Simples de limpar (basta restaurar `color`)
+**Advantages:**
+- Works naturally for entries that cross page breaks
+- No DOM alteration (no `createDivider`, no `reorderChildren`)
+- No phantom white spaces
+- Simple to clean up (just restore `color`)
 
 ---
 
-## Mudanças de código
+## Code Changes
 
-### 1. `data.lua` — adicionar `getOrderedEntryIds()`
+### 1. `data.lua` — add `getOrderedEntryIds()`
 
-Adicionar ao final do módulo (antes de `return M`):
+Add at the end of the module (before `return M`):
 
 ```lua
 function M.getOrderedEntryIds()
@@ -111,24 +110,24 @@ end
 
 ---
 
-### 2. `book.lua` — substituir dividers por color-based highlight + full-list navigation
+### 2. `book.lua` — replace dividers with color-based highlight + full-list navigation
 
-#### 2a. Remover constantes de divider e adicionar `coloredElements`
+#### 2a. Remove divider constants and add `coloredElements`
 
-Substituir:
+Replace:
 ```lua
 local SELECTION_DIVIDER_TOP_ID = tes3ui.registerID("journal_custom_selectionDividerTop")
 local SELECTION_DIVIDER_BOTTOM_ID = tes3ui.registerID("journal_custom_selectionDividerBottom")
 ```
 
-Por:
+With:
 ```lua
 local coloredElements = {}
 ```
 
-#### 2b. Substituir `clearSelectionHighlight`
+#### 2b. Replace `clearSelectionHighlight`
 
-Substituir a função inteira por:
+Replace the entire function with:
 ```lua
 local function clearSelectionHighlight(menu)
     local hadEntries = #coloredElements > 0
@@ -151,13 +150,13 @@ local function clearSelectionHighlight(menu)
 end
 ```
 
-#### 2c. Remover `findAnchorInElement` e `findSelectionAnchor` inteiramente
+#### 2c. Remove `findAnchorInElement` and `findSelectionAnchor` entirely
 
-Essas duas funções não são mais necessárias.
+These two functions are no longer needed.
 
-#### 2d. Substituir `updateSelectionHighlight`
+#### 2d. Replace `updateSelectionHighlight`
 
-Substituir a função inteira por:
+Replace the entire function with:
 ```lua
 local function updateSelectionHighlight(menu)
     clearSelectionHighlight(menu)
@@ -252,7 +251,7 @@ local function updateSelectionHighlight(menu)
 end
 ```
 
-#### 2e. Adicionar `buildFullNavigationBlocks()` antes de `configureMenuBook`
+#### 2e. Add `buildFullNavigationBlocks()` before `configureMenuBook`
 
 ```lua
 local function buildFullNavigationBlocks()
@@ -271,53 +270,53 @@ local function buildFullNavigationBlocks()
 end
 ```
 
-#### 2f. Atualizar handlers de teclado para usar `buildFullNavigationBlocks()`
+#### 2f. Update keyboard handlers to use `buildFullNavigationBlocks()`
 
-Dentro de `configureMenuBook`, no handler de `keyPress`:
+Inside `configureMenuBook`, in the `keyPress` handler:
 ```lua
--- ANTES:
+-- BEFORE:
 local nextEntryId, handled = input.onKeyPress(e, activeVisibleBlocks, selectedEntryId)
 
--- DEPOIS:
+-- AFTER:
 local nextEntryId, handled = input.onKeyPress(e, buildFullNavigationBlocks(), selectedEntryId)
 ```
 
-Dentro de `ensureMenuBookHooks`, nos dois handlers de `keyDown`:
+Inside `ensureMenuBookHooks`, in both `keyDown` handlers:
 ```lua
--- ANTES (em ambos):
+-- BEFORE (in both):
 local nextEntryId, handled = input.onKeyDown(e, activeVisibleBlocks, selectedEntryId)
 
--- DEPOIS (em ambos):
+-- AFTER (in both):
 local nextEntryId, handled = input.onKeyDown(e, buildFullNavigationBlocks(), selectedEntryId)
 ```
 
-#### 2g. Limpar `coloredElements` no destroy do menu
+#### 2g. Clean up `coloredElements` on menu destroy
 
-No início de `handleMenuBookDestroyed`:
+At the beginning of `handleMenuBookDestroyed`:
 ```lua
 local function handleMenuBookDestroyed(menu)
-    coloredElements = {}   -- <-- adicionar esta linha
+    coloredElements = {}   -- <-- add this line
     timer.frame.delayOneFrame(function()
         ...
 ```
 
 ---
 
-## Por que isso resolve o caso de spreads não exibidos ao mesmo tempo
+## Why this resolves the case of spreads not displayed at the same time
 
-Quando a entry selecionada está em um spread diferente do atual:
-- A navegação continua funcionando (usa a lista completa)
-- O `updateSelectionHighlight` não encontra nenhum nó correspondente nas duas páginas atuais — simplesmente não colore nada, sem crash, sem blank space
-- Quando o usuário virar a página até o spread que contém a entry, o `scheduleVisibleBlockCollection` dispara, que por sua vez chama `updateSelectionHighlight` no novo spread — e os nós corretos são coloridos
+When the selected entry is in a different spread than the current one:
+- Navigation continues working (uses the complete list)
+- `updateSelectionHighlight` finds no corresponding nodes on the two current pages — simply doesn't color anything, no crash, no blank space
+- When the user turns the page to the spread containing the entry, `scheduleVisibleBlockCollection` fires, which in turn calls `updateSelectionHighlight` on the new spread — and the correct nodes are colored
 
-Isso é robusto por design: a ausência de correspondência visual é silent, não um bug.
+This is robust by design: the absence of visual correspondence is silent, not a bug.
 
 ---
 
-## O que não muda
+## What doesn't change
 
-- `mapping.lua` — inalterado (coleta blocos para spread tracking)
-- `input.lua` — inalterado (a lista de navegação é construída em `book.lua`)
-- `render.lua` — inalterado (HTML sem divider, sem marcador inline)
-- `data.lua` — apenas recebe a nova função `getOrderedEntryIds()`
-- Lógica de `resolveSelection` e limpeza ao trocar spread — inalteradas
+- `mapping.lua` — unchanged (collects blocks for spread tracking)
+- `input.lua` — unchanged (navigation list is built in `book.lua`)
+- `render.lua` — unchanged (HTML without divider, without inline marker)
+- `data.lua` — only receives the new `getOrderedEntryIds()` function
+- `resolveSelection` logic and cleanup when switching spread — unchanged

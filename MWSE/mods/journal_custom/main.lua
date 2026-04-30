@@ -13,7 +13,7 @@ local function openJournalEntryPoint()
 
     local shouldSuppress, reason = compat.shouldSuppressJournalKeybind()
     if shouldSuppress then
-        logger.debug("Abertura do journal_custom ignorada por contexto de UI (%s).", tostring(reason))
+        logger.debug("journal_custom open ignored due to UI context (%s).", tostring(reason))
         return
     end
 
@@ -27,15 +27,15 @@ local function openJournalEntryPoint()
         return
     end
 
-    tes3.messageBox("journal_custom interceptou a tecla do journal.")
-    logger.debug("Callback de entrada do journal_custom executado.")
+    tes3.messageBox("journal_custom intercepted the journal key.")
+    logger.debug("journal_custom input callback executed.")
 end
 
 local function initialized()
     config.load()
     capture.register()
     compat.register(openJournalEntryPoint)
-    logger.info("Inicializado.")
+    logger.info("Initialized.")
 end
 
 local function loaded(e)
@@ -54,11 +54,11 @@ local function loaded(e)
 
         if created then
             logger.info(
-                "Nota de debug registrada no journal do save '%s' e sera gravada no proximo save.",
+                "Debug note registered in save journal '%s' and will be written on the next save.",
                 data.getProfileKey()
             )
         else
-            logger.debug("Nota de debug ja existia para o save '%s'.", data.getProfileKey())
+            logger.debug("Debug note already existed for save '%s'.", data.getProfileKey())
         end
     end
 end
@@ -67,8 +67,8 @@ local function save(e)
     local ok, _, flushed = pcall(data.flush, e and e.filename)
     if not ok then
         logger.error(
-            "Falha ao preparar o journal_custom para o save '%s'.",
-            e and e.filename or data.getProfileKey() or "desconhecido"
+            "Failed to prepare journal_custom for save '%s'.",
+            e and e.filename or data.getProfileKey() or "unknown"
         )
         return
     end
@@ -77,7 +77,7 @@ local function save(e)
         return
     end
 
-    logger.debug("Journal do save '%s' sincronizado antes da gravacao.", data.getProfileKey())
+    logger.debug("Save journal '%s' synced before write.", data.getProfileKey())
 end
 
 event.register(tes3.event.initialized, initialized)

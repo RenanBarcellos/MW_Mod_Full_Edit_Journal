@@ -1,0 +1,65 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Morrowind: Generate New MWSE Project",
+            "type": "shell",
+            "command": "C:\\dev\\Morrowind-ref\\scripts\\new-mwse-mod.bat",
+            "args": [
+                "${input:mwProjectName}",
+                "${input:mwModId}",
+                "${input:mwPackageName}",
+                "${input:mwAuthor}",
+                "${input:mwDestinationRoot}"
+            ],
+            "problemMatcher": []
+        },
+        {
+            "label": "Morrowind: Validate Current Project Placeholders",
+            "type": "shell",
+            "command": "powershell.exe",
+            "args": [
+                "-NoProfile",
+                "-ExecutionPolicy",
+                "Bypass",
+                "-File",
+                "C:\\dev\\Morrowind-ref\\scripts\\Test-MWSEProjectPlaceholders.ps1",
+                "-ProjectRoot",
+                "${workspaceFolder}"
+            ],
+            "problemMatcher": []
+        }
+    ],
+    "inputs": [
+        {
+            "id": "mwProjectName",
+            "type": "promptString",
+            "description": "New project folder name",
+            "default": "MW_Mod_New_Project"
+        },
+        {
+            "id": "mwModId",
+            "type": "promptString",
+            "description": "Mod ID in snake_case",
+            "default": "new_mod"
+        },
+        {
+            "id": "mwPackageName",
+            "type": "promptString",
+            "description": "Visible package name",
+            "default": "New Mod"
+        },
+        {
+            "id": "mwAuthor",
+            "type": "promptString",
+            "description": "Author",
+            "default": "Renan"
+        },
+        {
+            "id": "mwDestinationRoot",
+            "type": "promptString",
+            "description": "Directory where the new project will be created",
+            "default": "C:\\dev"
+        }
+    ]
+}

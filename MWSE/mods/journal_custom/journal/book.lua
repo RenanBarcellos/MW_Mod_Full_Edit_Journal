@@ -261,7 +261,7 @@ local function resetSelectionState()
     lastContext.selectedSpreadStart = nil
     data.setSelectedEntry(nil)
     data.save()
-    logger.debug("Selecao do journal_custom limpa (open).")
+    logger.debug("journal_custom selection cleared (open).")
     return true
 end
 
@@ -363,7 +363,7 @@ local function closeHelpMenu()
     end
 
     menu:destroy()
-    logger.debug("Help do journal_custom fechado.")
+    logger.debug("journal_custom help closed.")
     return true
 end
 
@@ -402,11 +402,11 @@ local function openHelpMenu()
     end)
 
     menu:registerAfter("destroy", function()
-        logger.debug("Menu de help do journal_custom destruido.")
+        logger.debug("journal_custom help menu destroyed.")
     end)
 
     menu:getTopLevelMenu():updateLayout()
-    logger.debug("Help do journal_custom aberto.")
+    logger.debug("journal_custom help opened.")
     return true
 end
 
@@ -428,7 +428,7 @@ local function ensureHelpButton(menu)
         return false
     end
 
-    local helpButton = container:createButton({ id = HELP_BUTTON_ID, text = "Ajuda" })
+    local helpButton = container:createButton({ id = HELP_BUTTON_ID, text = "Help" })
     helpButton.borderLeft = 12
     helpButton:register(tes3.uiEvent.mouseClick, function()
         toggleHelpMenu()
@@ -457,7 +457,7 @@ local function applySelection(entryId, reason)
     lastContext.selectedSpreadStart = currentSpreadStart
     data.setSelectedEntry(entryId)
     data.save()
-    logger.debug("Selecao do journal_custom (%s): %s", reason or "update", input.describeSelection(entryId))
+    logger.debug("journal_custom selection (%s): %s", reason or "update", input.describeSelection(entryId))
 
     updateSelectionHighlight(menu)
     return true
@@ -477,7 +477,7 @@ local function clearSelection(reason)
     lastContext.selectedSpreadStart = nil
     data.setSelectedEntry(nil)
     data.save()
-    logger.debug("Selecao do journal_custom limpa (%s).", reason or "update")
+    logger.debug("journal_custom selection cleared (%s).", reason or "update")
 
     if not hadSelection then
         return false
@@ -554,7 +554,7 @@ end
 local function collectVisibleBlocks(menu, reason)
     local ok, blocks = pcall(mapping.collectVisibleBlocks, menu, data.getState())
     if not ok then
-        logger.warn("Falha ao coletar mapping do livro: %s", blocks)
+        logger.warn("Failed to collect book mapping: %s", blocks)
         return false
     end
 
@@ -571,7 +571,7 @@ local function collectVisibleBlocks(menu, reason)
                 lastContext.selectedSpreadStart = blocks.spreadStart
                 selectedSpreadStart = blocks.spreadStart
                 logger.debug(
-                    "Selecao do journal_custom mantida apos trocar spread: %s em %s.",
+                    "journal_custom selection kept after spread change: %s at %s.",
                     tostring(selectedEntryId),
                     tostring(blocks.spreadStart)
                 )
@@ -599,13 +599,13 @@ local function collectVisibleBlocks(menu, reason)
     end
 
     if #blocks == 0 then
-        logger.debug("Mapping do journal_custom nao encontrou blocos visiveis (%s).", reason or "update")
+        logger.debug("journal_custom mapping found no visible blocks (%s).", reason or "update")
         return false
     end
 
     persistVisibleBlocks(blocks)
 
-    logger.debug("Mapping do journal_custom (%s): %s", reason or "update", summarizeVisibleBlocks(blocks))
+    logger.debug("journal_custom mapping (%s): %s", reason or "update", summarizeVisibleBlocks(blocks))
     return true
 end
 
@@ -718,7 +718,7 @@ local function scheduleSpreadRestore(targetSpreadStart, reason)
         if type(currentSpreadStart) ~= "number" then
             restoreState.waitFrames = restoreState.waitFrames + 1
             if restoreState.waitFrames > 6 then
-                logger.warn("Nao foi possivel ler o spread atual ao restaurar o livro para %s.", tostring(restoreState.targetSpreadStart))
+                logger.warn("Could not read the current spread while restoring the book to %s.", tostring(restoreState.targetSpreadStart))
                 finishRestore(restoreState.reason)
                 return
             end
@@ -994,9 +994,9 @@ local function ensureMenuBookHooks()
 
         renderSoundSuppression.remaining = renderSoundSuppression.remaining - 1
         logger.debug(
-            "Som de abertura do journal_custom suprimido (%s): %s",
+            "journal_custom opening sound suppressed (%s): %s",
             tostring(renderSoundSuppression.reason or "render"),
-            sound.id or sound.filename or "desconhecido"
+            sound.id or sound.filename or "unknown"
         )
 
         if renderSoundSuppression.remaining <= 0 or soundId:find("book", 1, true) or soundFilename:find("book", 1, true) then
@@ -1061,21 +1061,21 @@ end
 local function handleEditSave(payload)
     local entryId = payload and payload.entryId or nil
     if not entryId or not data.updateEditedText(entryId, payload.draftText or "") then
-        logger.warn("Falha ao salvar edicao do journal_custom para %s.", tostring(entryId))
+        logger.warn("Failed to save journal_custom edit for %s.", tostring(entryId))
         return false
     end
 
     data.markDeleted(entryId, false)
     setSelectionForRebuild(entryId, payload.restoreSpreadStart)
     data.save()
-    logger.info("Edicao do journal_custom salva para %s.", tostring(entryId))
+    logger.info("journal_custom edit saved for %s.", tostring(entryId))
     return M.rebuild(true, payload.restoreSpreadStart, "editSave")
 end
 
 local function handleEditCancel(payload)
     local entryId = payload and payload.entryId or nil
     setSelectionForRebuild(entryId, payload and payload.restoreSpreadStart or nil)
-    logger.debug("Edicao do journal_custom cancelada para %s.", tostring(entryId))
+    logger.debug("journal_custom edit canceled for %s.", tostring(entryId))
     updateSelectionHighlight(tes3ui.findMenu("MenuBook"))
     scheduleVisibleBlockCollection("editCancel")
     return true
@@ -1084,14 +1084,14 @@ end
 local function handleEditDelete(payload)
     local entryId = payload and payload.entryId or nil
     if not entryId or not data.markDeleted(entryId, true) then
-        logger.warn("Falha ao apagar entry do journal_custom para %s.", tostring(entryId))
+        logger.warn("Failed to delete journal_custom entry for %s.", tostring(entryId))
         return false
     end
 
     local fallbackEntryId = pickNeighborEntryId(payload and payload.visibleEntryIds or {}, entryId)
     setSelectionForRebuild(fallbackEntryId, payload.restoreSpreadStart)
     data.save()
-    logger.info("Entry do journal_custom apagada: %s.", tostring(entryId))
+    logger.info("journal_custom entry deleted: %s.", tostring(entryId))
     return M.rebuild(true, payload.restoreSpreadStart, "editDelete")
 end
 
@@ -1111,20 +1111,20 @@ local function handleCreateNoteSave(payload)
     })
 
     if not created then
-        logger.warn("Falha ao criar nota do jogador no journal_custom.")
+        logger.warn("Failed to create player note in journal_custom.")
         return false
     end
 
     data.ensureDateEntryForEntry(created.id)
     setSelectionForRebuild(created.id, payload and payload.restoreSpreadStart or nil)
     data.save()
-    logger.info("Nota do jogador criada no journal_custom: %s.", tostring(created.id))
+    logger.info("Player note created in journal_custom: %s.", tostring(created.id))
     return M.rebuild(true, payload and payload.restoreSpreadStart or nil, "noteCreate")
 end
 
 local function handleCreateNoteCancel(payload)
     local _ = payload
-    logger.debug("Criacao de nota do jogador cancelada no journal_custom.")
+    logger.debug("Player note creation canceled in journal_custom.")
     updateSelectionHighlight(tes3ui.findMenu("MenuBook"))
     scheduleVisibleBlockCollection("noteCancel")
     return true
@@ -1154,19 +1154,19 @@ local function handleCreateDateSave(payload)
     })
 
     if not created then
-        logger.warn("Falha ao criar entry de data no journal_custom.")
+        logger.warn("Failed to create date entry in journal_custom.")
         return false
     end
 
     setSelectionForRebuild(created.id, payload and payload.restoreSpreadStart or nil)
     data.save()
-    logger.info("Entry de data criada no journal_custom: %s.", tostring(created.id))
+    logger.info("Date entry created in journal_custom: %s.", tostring(created.id))
     return M.rebuild(true, payload and payload.restoreSpreadStart or nil, "dateCreate")
 end
 
 local function handleCreateDateCancel(payload)
     local _ = payload
-    logger.debug("Criacao de entry de data cancelada no journal_custom.")
+    logger.debug("Date entry creation canceled in journal_custom.")
     updateSelectionHighlight(tes3ui.findMenu("MenuBook"))
     scheduleVisibleBlockCollection("dateCancel")
     return true
@@ -1245,7 +1245,7 @@ local function renderCurrentBook(context, reason)
         scheduleVisibleBlockCollection(reason or "open")
     end
 
-    logger.debug("Livro do journal_custom aberto com %d entries.", countRenderableEntries(entries))
+    logger.debug("journal_custom book opened with %d entries.", countRenderableEntries(entries))
     return true
 end
 
@@ -1255,8 +1255,8 @@ function M.open()
         return resolveContext(false)
     end)
     if not ok then
-        logger.warn("Livro do journal_custom requisitado antes do carregamento do save.")
-        tes3.messageBox("journal_custom ainda nao carregou os dados do save.")
+        logger.warn("journal_custom book requested before the save finished loading.")
+        tes3.messageBox("journal_custom has not loaded the save data yet.")
         return false
     end
 
@@ -1266,7 +1266,7 @@ end
 function M.close()
     if tes3ui.findMenu("MenuBook") then
         tes3ui.closeBookMenu()
-        logger.debug("Livro do journal_custom fechado.")
+        logger.debug("journal_custom book closed.")
         return true
     end
 

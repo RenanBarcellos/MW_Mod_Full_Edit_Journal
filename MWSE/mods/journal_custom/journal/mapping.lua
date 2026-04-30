@@ -356,7 +356,7 @@ function M.collectVisibleBlocks(menu, state)
     end
 
     if #pageSnapshots == 0 then
-        logger.warn("Mapping do journal_custom nao encontrou texto visivel no MenuBook.")
+        logger.warn("journal_custom mapping found no visible text in MenuBook.")
         return blocks
     end
 

@@ -27,17 +27,17 @@ local function registerModConfig()
         config.save()
     end
 
-    local page = template:createPage({ label = "Geral" })
+    local page = template:createPage({ label = "General" })
 
     page:createInfo({
-        text = "Configuracao da versao 1.0 do journal_custom. Os defaults recomendados ja deixam o mod pronto para uso sem editar codigo.",
+        text = "Configuration for journal_custom version 1.0. The recommended defaults already leave the mod ready to use without editing code.",
     })
 
     local rolloutCategory = page:createCategory({ label = "Features" })
 
     rolloutCategory:createOnOffButton({
-        label = "Bloquear journal vanilla",
-        description = "Interceta a abertura do journal vanilla para redirecionar ao journal_custom.",
+        label = "Block vanilla journal",
+        description = "Intercepts the vanilla journal opening and redirects it to journal_custom.",
         variable = mwse.mcm.createTableVariable({
             id = "enableVanillaJournalBlock",
             table = config.get().featureFlags,
@@ -45,8 +45,8 @@ local function registerModConfig()
     })
 
     rolloutCategory:createOnOffButton({
-        label = "Modo livro",
-        description = "Abre o journal_custom no MenuBook em vez de apenas registrar o intercept.",
+        label = "Book mode",
+        description = "Opens journal_custom in MenuBook instead of only registering the intercept.",
         variable = mwse.mcm.createTableVariable({
             id = "enableBookMode",
             table = config.get().featureFlags,
@@ -54,8 +54,8 @@ local function registerModConfig()
     })
 
     rolloutCategory:createOnOffButton({
-        label = "Selecao navegavel",
-        description = "Habilita a selecao por setas dentro do spread atual.",
+        label = "Navigable selection",
+        description = "Enables arrow-key selection inside the current spread.",
         variable = mwse.mcm.createTableVariable({
             id = "enableSelection",
             table = config.get().featureFlags,
@@ -63,8 +63,8 @@ local function registerModConfig()
     })
 
     rolloutCategory:createOnOffButton({
-        label = "Edicao modal",
-        description = "Habilita o modal de edicao da Fase 8 e a criacao de notas do jogador.",
+        label = "Modal editing",
+        description = "Enables the Phase 8 editing modal and player note creation.",
         variable = mwse.mcm.createTableVariable({
             id = "enableEditMode",
             table = config.get().featureFlags,
@@ -72,19 +72,19 @@ local function registerModConfig()
     })
 
     rolloutCategory:createOnOffButton({
-        label = "Migracao legada",
-        description = "Importa dados do formato legado por save quando necessario.",
+        label = "Legacy migration",
+        description = "Imports data from the legacy per-save format when needed.",
         variable = mwse.mcm.createTableVariable({
             id = "enableMigration",
             table = config.get().featureFlags,
         }),
     })
 
-    local shortcutsCategory = page:createCategory({ label = "Atalhos" })
+    local shortcutsCategory = page:createCategory({ label = "Shortcuts" })
 
     shortcutsCategory:createInfo({
         text = table.concat({
-            "Atalhos usados no mod:",
+            "Shortcuts used by the mod:",
             table.concat(input.getHelpShortcutLines(), "\n"),
         }, "\n\n"),
     })
@@ -92,45 +92,45 @@ local function registerModConfig()
     createShortcutBinder(
         shortcutsCategory,
         "help",
-        "Abrir help",
-        "Alterna a sobreposicao de help dentro do journal_custom."
+        "Open help",
+        "Toggles the help overlay inside journal_custom."
     )
     createShortcutBinder(
         shortcutsCategory,
         "editEntry",
-        "Editar entrada selecionada",
-        "Abre o modal de edicao para a entrada selecionada."
+        "Edit selected entry",
+        "Opens the editing modal for the selected entry."
     )
     createShortcutBinder(
         shortcutsCategory,
         "createNote",
-        "Criar nota do jogador",
-        "Cria uma nota abaixo da selecao atual ou no fim se nao houver selecao."
+        "Create player note",
+        "Creates a note below the current selection or at the end if nothing is selected."
     )
     createShortcutBinder(
         shortcutsCategory,
         "createDate",
-        "Criar entrada de data",
-        "Cria uma entrada de data abaixo da selecao atual ou no fim se nao houver selecao."
+        "Create date entry",
+        "Creates a date entry below the current selection or at the end if nothing is selected."
     )
     createShortcutBinder(
         shortcutsCategory,
         "saveModal",
-        "Salvar no modal",
-        "Confirma a edicao ou criacao quando o modal estiver aberto."
+        "Save in modal",
+        "Confirms editing or creation while the modal is open."
     )
     createShortcutBinder(
         shortcutsCategory,
         "cancelModal",
-        "Cancelar no modal",
-        "Cancela a edicao atual ou fecha a ajuda contextual."
+        "Cancel in modal",
+        "Cancels the current edit or closes the contextual help."
     )
 
-    local debugCategory = page:createCategory({ label = "Debug e diagnostico" })
+    local debugCategory = page:createCategory({ label = "Debug and diagnostics" })
 
     debugCategory:createOnOffButton({
-        label = "Logs detalhados",
-        description = "Mantem logs detalhados do journal_custom no MWSE.log.",
+        label = "Detailed logs",
+        description = "Keeps detailed journal_custom logs in MWSE.log.",
         variable = mwse.mcm.createTableVariable({
             id = "debugLogging",
             table = config.get().featureFlags,
@@ -138,7 +138,7 @@ local function registerModConfig()
     })
 
     debugCategory:createInfo({
-        text = "O keybind do journal continua vindo do menu Controls do jogo. Segurar Shift enquanto usa esse keybind abre o journal vanilla.",
+        text = "The journal keybind still comes from the game's Controls menu. Holding Shift while using that keybind opens the vanilla journal.",
     })
 
     template:register()

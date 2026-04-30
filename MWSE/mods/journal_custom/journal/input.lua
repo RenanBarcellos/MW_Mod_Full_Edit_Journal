@@ -152,7 +152,7 @@ end
 local function describeEntry(entryId)
     local entry = data.getEntry(entryId)
     if not entry then
-        return tostring(entryId or "desconhecida")
+        return tostring(entryId or "unknown")
     end
 
     return string.format("%s [%s]", render.buildHeaderTitle(entry), entry.id)
@@ -269,17 +269,18 @@ function M.beginEdit(entryId, blocks, callbacks)
 
     local entry = data.getEntry(entryId)
     if not entry or entry.deleted == true then
-        logger.warn("Nao foi possivel iniciar edicao para a entry %s.", tostring(entryId))
+        logger.warn("Could not start editing for entry %s.", tostring(entryId))
         return false
     end
 
     local isDateEntry = data.isDateEntry(entry)
     local titleText = isDateEntry
-        and string.format("Editar data: %s", journalDate.resolveEntryDateLabel(entry))
+        and string.format("Edit date: %s", journalDate.resolveEntryDateLabel(entry))
         or nil
     local helpText = buildEditHelpText(isDateEntry)
 
-    logger.info("Iniciando edicao do journal_custom: %s", describeEntry(entryId))
+    logger.info("Starting journal_custom edit: %s", describeEntry(entryId))
+    logger.info("Starting player note creation in journal_custom.")
 
     return editor.open({
         entry = entry,
@@ -303,7 +304,7 @@ function M.beginCreateNote(blocks, callbacks)
         return false
     end
 
-    logger.info("Iniciando criacao de nota do jogador no journal_custom.")
+    logger.info("Starting player note creation in journal_custom.")
 
     return editor.open({
         entry = {
@@ -311,7 +312,7 @@ function M.beginCreateNote(blocks, callbacks)
             editedText = "",
             originalText = "",
             source = "player",
-            displayDate = "Nova nota",
+            displayDate = "New note",
         },
         helpText = buildCreateNoteHelpText(),
         initialText = "",
@@ -320,7 +321,7 @@ function M.beginCreateNote(blocks, callbacks)
         restoreSpreadStart = blocks and blocks.spreadStart or nil,
         sessionKind = "create",
         showDelete = false,
-        titleText = "Nova nota do jogador",
+        titleText = "New player note",
         visibleEntryIds = buildVisibleEntryList(blocks),
     })
 end
@@ -336,7 +337,7 @@ function M.beginCreateDate(blocks, callbacks)
 
     local initialLabel = journalDate.buildDisplayDate(journalDate.getCurrentDateFields())
 
-    logger.info("Iniciando criacao de entry de data no journal_custom.")
+    logger.info("Starting date entry creation in journal_custom.")
 
     return editor.open({
         entry = {
@@ -354,7 +355,7 @@ function M.beginCreateDate(blocks, callbacks)
         restoreSpreadStart = blocks and blocks.spreadStart or nil,
         sessionKind = "createDate",
         showDelete = false,
-        titleText = "Nova entrada de data",
+        titleText = "New date entry",
         visibleEntryIds = buildVisibleEntryList(blocks),
     })
 end
