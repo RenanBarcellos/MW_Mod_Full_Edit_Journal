@@ -7,6 +7,51 @@ local logger = require("journal_custom.util.logger")
 require("journal_custom.mcm")
 local data = require("journal_custom.journal.data")
 
+local function resolveTopicLabel(topic)
+    if type(topic) == "string" and topic ~= "" then
+        return topic
+    end
+
+    if type(topic) ~= "table" then
+        return nil
+    end
+
+    if type(topic.id) == "string" and topic.id ~= "" then
+        return topic.id
+    end
+
+    if type(topic.name) == "string" and topic.name ~= "" then
+        return topic.name
+    end
+
+    return nil
+end
+
+-- Dialogue topics can be unlocked independently of journal capture, so keep a
+-- save-scoped index updated as the game exposes new topics to the player.
+local function rememberUnlockedTopic(e)
+    if not data.isLoaded() then
+        return
+    end
+
+    local topicLabel = resolveTopicLabel(e and (e.topic or e.topicId or e.id or e.name))
+    if not topicLabel or not data.rememberKnownTopic(topicLabel) then
+        return
+    end
+
+    logger.debug("Known topic unlocked for save '%s': %s.", data.getProfileKey() or "unknown", topicLabel)
+end
+
+-- The game can rebuild the topic list wholesale, so rescan persisted state to
+-- keep the lookup normalized after those refreshes.
+local function topicsListUpdated()
+    if not data.isLoaded() or not data.rebuildKnownTopics() then
+        return
+    end
+
+    logger.debug("Known topic index rebuilt for save '%s'.", data.getProfileKey() or "unknown")
+end
+
 -- Route the journal key either to the custom book UI or to the lightweight
 -- debug intercept, depending on the current feature flags.
 local function openJournalEntryPoint()
@@ -38,6 +83,8 @@ local function initialized()
     config.load()
     capture.register()
     compat.register(openJournalEntryPoint)
+    event.register(tes3.event.topicAdded, rememberUnlockedTopic)
+    event.register(tes3.event.topicsListUpdated, topicsListUpdated)
     logger.info("Initialized.")
 end
 
@@ -66,6 +113,8 @@ local function loaded(e)
             logger.debug("Debug note already existed for save '%s'.", data.getProfileKey())
         end
     end
+
+    topicsListUpdated()
 end
 
 -- Copy the in-memory journal snapshot into Lua data right before the game

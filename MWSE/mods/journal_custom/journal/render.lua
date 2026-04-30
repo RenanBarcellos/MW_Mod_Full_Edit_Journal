@@ -89,9 +89,23 @@ function M.buildEntryBody(entry)
         return label
     end
 
-    local body = text.sanitizeBookBodyText(entry.editedText or entry.originalText or "", {
-        preserveSingleLineBreaks = entry.source == "player",
-    })
+    local rawBody = entry.editedText or entry.originalText or ""
+    local bodyOptions
+
+    if entry.source == "player" then
+        bodyOptions = {
+            knownTopics = data.getKnownTopics(),
+            preserveSingleLineBreaks = true,
+        }
+    else
+        local preserveJournalMarkup = rawBody:find("@([^#]+)#") ~= nil
+        bodyOptions = {
+            knownTopics = preserveJournalMarkup and nil or data.getKnownTopics(),
+            preserveJournalMarkup = preserveJournalMarkup,
+        }
+    end
+
+    local body = text.sanitizeBookBodyText(rawBody, bodyOptions)
 
     if body == "" then
         return "(no text)"

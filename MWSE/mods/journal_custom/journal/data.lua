@@ -1,5 +1,6 @@
 local logger = require("journal_custom.util.logger")
 local journalDate = require("journal_custom.util.date")
+local text = require("journal_custom.util.text")
 
 local legacyDataRoot = "journal_custom\\journal"
 local saveDataKey = "journal_custom"
@@ -36,6 +37,7 @@ local function getPersistentDefaults()
         schemaVersion = 1,
         migrationDone = false,
         viewMode = "diary",
+        knownTopics = {},
         entries = {},
     }
 end
@@ -127,6 +129,7 @@ local function buildPersistentSnapshot(runtimeState)
         schemaVersion = tonumber(runtimeState.schemaVersion) or defaults.schemaVersion,
         migrationDone = runtimeState.migrationDone == true,
         viewMode = runtimeState.viewMode or defaults.viewMode,
+        knownTopics = clone(runtimeState.knownTopics or {}),
         entries = clone(runtimeState.entries or {}),
     }
 end
@@ -158,6 +161,77 @@ local function requireLoadedState()
     end
 
     return state
+end
+
+local function areStringMapsEqual(left, right)
+    for key, value in pairs(left or {}) do
+        if right[key] ~= value then
+            return false
+        end
+    end
+
+    for key, value in pairs(right or {}) do
+        if left[key] ~= value then
+            return false
+        end
+    end
+
+    return true
+end
+
+local function rememberKnownTopicInMap(target, topic)
+    if type(target) ~= "table" then
+        return false
+    end
+
+    local topicKey = text.buildTopicKey(topic)
+    local displayText = text.normalizeWhitespace(text.stripJournalMarkup(topic))
+    if not topicKey or displayText == "" then
+        return false
+    end
+
+    local previousValue = target[topicKey]
+    if previousValue == displayText then
+        return false
+    end
+
+    if type(previousValue) ~= "string" or previousValue == "" or #displayText > #previousValue then
+        target[topicKey] = displayText
+        return true
+    end
+
+    return false
+end
+
+local function rememberKnownTopicsFromText(target, value)
+    local changed = false
+
+    for _, topic in ipairs(text.extractJournalTopics(value)) do
+        if rememberKnownTopicInMap(target, topic) then
+            changed = true
+        end
+    end
+
+    return changed
+end
+
+-- Engine-authored journal text is the canonical source for topic hyperlinks the
+-- player has already seen in this save.
+local function rememberKnownTopicsFromEntry(target, entry)
+    if type(entry) ~= "table" or entry.source ~= "engine" then
+        return false
+    end
+
+    local changed = false
+    if rememberKnownTopicsFromText(target, entry.originalText) then
+        changed = true
+    end
+
+    if rememberKnownTopicsFromText(target, entry.editedText) then
+        changed = true
+    end
+
+    return changed
 end
 
 -- Date entries act like structural separators in the custom journal, so many
@@ -308,6 +382,25 @@ local function normalizeLoadedDateState(loadedState)
         end
     end
 
+    return changed
+end
+
+-- Save data stores known topics as a normalized lookup table keyed by visible
+-- topic text, then rehydrates any missing topics from imported engine entries.
+local function normalizeLoadedKnownTopics(loadedState)
+    local originalKnownTopics = type(loadedState.knownTopics) == "table" and loadedState.knownTopics or {}
+    local normalizedKnownTopics = {}
+
+    for _, topic in pairs(originalKnownTopics) do
+        rememberKnownTopicInMap(normalizedKnownTopics, topic)
+    end
+
+    for _, entry in pairs(loadedState.entries or {}) do
+        rememberKnownTopicsFromEntry(normalizedKnownTopics, entry)
+    end
+
+    local changed = not areStringMapsEqual(originalKnownTopics, normalizedKnownTopics)
+    loadedState.knownTopics = normalizedKnownTopics
     return changed
 end
 
@@ -542,6 +635,9 @@ function M.load(profileKey)
     if normalizeLoadedDateState(state) then
         dirty = true
     end
+    if normalizeLoadedKnownTopics(state) then
+        dirty = true
+    end
     local insertedDateEntries = M.ensureDateEntriesInitialized()
     if insertedDateEntries > 0 then
         logger.info("Date entries initialized for save '%s': %d.", currentProfileKey, insertedDateEntries)
@@ -592,6 +688,10 @@ function M.getState()
     return requireLoadedState()
 end
 
+function M.isLoaded()
+    return state ~= nil
+end
+
 function M.getProfileKey()
     return currentProfileKey
 end
@@ -606,6 +706,53 @@ end
 
 function M.getEntries()
     return requireLoadedState().entries
+end
+
+function M.getKnownTopics()
+    return requireLoadedState().knownTopics or {}
+end
+
+function M.isKnownTopic(topic)
+    local topicKey = text.buildTopicKey(topic)
+    if not topicKey then
+        return false
+    end
+
+    return M.getKnownTopics()[topicKey] ~= nil
+end
+
+function M.rememberKnownTopic(topic)
+    local loadedState = requireLoadedState()
+    loadedState.knownTopics = type(loadedState.knownTopics) == "table" and loadedState.knownTopics or {}
+
+    if not rememberKnownTopicInMap(loadedState.knownTopics, topic) then
+        return false
+    end
+
+    dirty = true
+    return true
+end
+
+function M.rememberKnownTopics(topics)
+    local changed = false
+
+    for _, topic in pairs(type(topics) == "table" and topics or {}) do
+        if M.rememberKnownTopic(topic) then
+            changed = true
+        end
+    end
+
+    return changed
+end
+
+function M.rebuildKnownTopics()
+    local loadedState = requireLoadedState()
+    if not normalizeLoadedKnownTopics(loadedState) then
+        return false
+    end
+
+    dirty = true
+    return true
 end
 
 -- Engine entries preserve user edits and visibility flags if the same quest
@@ -635,7 +782,12 @@ function M.upsertEngineEntry(entry)
         entry.customOrder = (getHighestCustomOrder() or 0) + CUSTOM_ORDER_GAP
     end
 
-    return upsertEntry(entry)
+    local persistedEntry = upsertEntry(entry)
+    if rememberKnownTopicsFromEntry(requireLoadedState().knownTopics, persistedEntry) then
+        dirty = true
+    end
+
+    return persistedEntry
 end
 
 -- Player-created notes and date entries share one constructor so persistence,

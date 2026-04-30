@@ -42,10 +42,7 @@ local sessionState = {
 -- Normalize any rendered fragment into the same comparison surface used by the
 -- entry matchers.
 local function normalizeMatchText(value)
-    local normalized = text.stripJournalMarkup(value)
-    normalized = text.stripBookHtml(normalized)
-    normalized = normalized:gsub("%-+", " ")
-    return collapseMatchWhitespace(normalized)
+    return collapseMatchWhitespace(text.normalizeVisibleBookText(value))
 end
 
 -- Larger entries use longer fragments, while short entries still get a usable

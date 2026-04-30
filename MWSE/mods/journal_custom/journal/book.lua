@@ -145,7 +145,7 @@ local function updateSelectionHighlight(menu)
         return false
     end
 
-    local bodyText = text.normalizeWhitespace(text.stripBookHtml(render.buildEntryBody(entry))):gsub("%-+", " ")
+    local bodyText = text.normalizeVisibleBookText(render.buildEntryBody(entry))
     if bodyText == "" then
         return false
     end
@@ -168,7 +168,7 @@ local function updateSelectionHighlight(menu)
 
         local elementText = element.text
         if type(elementText) == "string" then
-            local normalizedText = text.normalizeWhitespace(text.stripBookHtml(elementText)):gsub("%-+", " ")
+            local normalizedText = text.normalizeVisibleBookText(elementText)
             if normalizedText ~= "" then
                 target[#target + 1] = {
                     element = element,
